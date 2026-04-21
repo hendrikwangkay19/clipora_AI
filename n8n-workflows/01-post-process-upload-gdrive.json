@@ -1,0 +1,107 @@
+{
+  "name": "AutoClip AI — Post-Process (Upload Google Drive)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "post-process",
+        "responseMode": "onReceived",
+        "responseData": "allEntries",
+        "options": {}
+      },
+      "id": "webhook-receive",
+      "name": "Webhook: Terima Hasil Clip",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "post-process"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract data dari webhook\nconst input = $input.first().json;\n\nconst jobId = input.jobId;\nconst clips = input.clips || [];\nconst metadata = input.metadata || {};\nconst callbackUrl = input.callbackUrl;\n\n// Siapkan items untuk setiap clip\nconst items = clips.map((clip, index) => ({\n  json: {\n    jobId,\n    clipIndex: index,\n    filePath: clip.filePath,\n    relativePath: clip.relativePath,\n    fileName: clip.fileName || `clip-${index + 1}.mp4`,\n    caption: clip.caption,\n    hashtags: clip.hashtags,\n    score: clip.score,\n    durationSeconds: clip.durationSeconds,\n    callbackUrl,\n    metadata\n  }\n}));\n\nreturn items;"
+      },
+      "id": "code-prepare",
+      "name": "Persiapkan Data Clip",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "name": "={{ $json.fileName }}",
+        "folderId": "GANTI_DENGAN_FOLDER_ID_GOOGLE_DRIVE",
+        "options": {
+          "fields": "id,name,webViewLink,webContentLink"
+        }
+      },
+      "id": "gdrive-upload",
+      "name": "Upload ke Google Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [690, 300],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "GANTI_CREDENTIAL_ID",
+          "name": "Google Drive OAuth2"
+        }
+      },
+      "notes": "⚠️ Setup: 1) Buat OAuth2 credential Google Drive di n8n. 2) Ganti folderId dengan ID folder Google Drive tujuan. 3) File akan dibaca dari filePath lokal."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Kumpulkan hasil upload\nconst items = $input.all();\n\nconst results = items.map(item => {\n  const data = item.json;\n  return {\n    clipIndex: data.clipIndex ?? 0,\n    driveUrl: data.webViewLink || data.webContentLink || '',\n    driveFileId: data.id || '',\n    fileName: data.name || ''\n  };\n});\n\n// Ambil jobId dan callbackUrl dari item pertama\nconst first = items[0]?.json || {};\n\nreturn [{\n  json: {\n    jobId: first.jobId,\n    success: true,\n    results,\n    callbackUrl: first.callbackUrl\n  }\n}];"
+      },
+      "id": "code-collect",
+      "name": "Kumpulkan Hasil Upload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [910, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.callbackUrl }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ jobId: $json.jobId, success: $json.success, results: $json.results }) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "http-callback",
+      "name": "Callback ke Next.js",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1130, 300]
+    }
+  ],
+  "connections": {
+    "Webhook: Terima Hasil Clip": {
+      "main": [
+        [{ "node": "Persiapkan Data Clip", "type": "main", "index": 0 }]
+      ]
+    },
+    "Persiapkan Data Clip": {
+      "main": [
+        [{ "node": "Upload ke Google Drive", "type": "main", "index": 0 }]
+      ]
+    },
+    "Upload ke Google Drive": {
+      "main": [
+        [{ "node": "Kumpulkan Hasil Upload", "type": "main", "index": 0 }]
+      ]
+    },
+    "Kumpulkan Hasil Upload": {
+      "main": [
+        [{ "node": "Callback ke Next.js", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    { "name": "autoclip-ai" },
+    { "name": "post-process" }
+  ]
+}

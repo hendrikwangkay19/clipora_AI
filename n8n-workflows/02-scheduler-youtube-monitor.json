@@ -1,0 +1,118 @@
+{
+  "name": "AutoClip AI — Scheduler (YouTube Monitor)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule: Setiap 6 Jam",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300],
+      "notes": "Jalankan setiap 6 jam. Ubah interval sesuai kebutuhan."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Daftar channel YouTube yang ingin dimonitor\n// Ganti dengan channel URL yang kamu ingin pantau\nconst channels = [\n  // { name: 'Channel Name', url: 'https://www.youtube.com/watch?v=VIDEO_ID' }\n];\n\n// Untuk MVP: masukkan URL video manual di sini\nconst videoUrls = [\n  // 'https://www.youtube.com/watch?v=CONTOH_VIDEO_ID'\n];\n\nreturn videoUrls.map(url => ({ json: { url } }));"
+      },
+      "id": "code-urls",
+      "name": "Daftar Video URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [470, 300],
+      "notes": "Tambahkan URL video YouTube yang ingin diproses otomatis."
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:3000/api/n8n/trigger",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ url: $json.url, options: { aspectRatio: '9:16', maxClips: 3, hookType: 'viral' } }) }}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "http-trigger",
+      "name": "Trigger Pipeline AutoClip",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [690, 300],
+      "notes": "Memanggil pipeline lokal Next.js. Timeout 5 menit karena processing bisa lama."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.success }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-success",
+      "name": "Cek Berhasil?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [910, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst clips = data.clips || [];\nconst job = data.job || {};\n\nconst summary = `✅ AutoClip selesai!\\n` +\n  `Job: ${job.id?.slice(0,8)}\\n` +\n  `Clip: ${clips.length} buah\\n` +\n  `Source: ${job.url}\\n` +\n  `n8n: ${data.n8n?.notified ? 'Upload ke GDrive dimulai' : 'Tersedia lokal'}`;\n\nreturn [{ json: { summary, clipCount: clips.length, jobId: job.id } }];"
+      },
+      "id": "code-summary",
+      "name": "Buat Ringkasan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1130, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst error = data.error || {};\n\nreturn [{ json: { \n  summary: `❌ AutoClip gagal: ${error.message || 'Unknown error'}`,\n  errorCode: error.code\n} }];"
+      },
+      "id": "code-error",
+      "name": "Log Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1130, 400]
+    }
+  ],
+  "connections": {
+    "Schedule: Setiap 6 Jam": {
+      "main": [
+        [{ "node": "Daftar Video URL", "type": "main", "index": 0 }]
+      ]
+    },
+    "Daftar Video URL": {
+      "main": [
+        [{ "node": "Trigger Pipeline AutoClip", "type": "main", "index": 0 }]
+      ]
+    },
+    "Trigger Pipeline AutoClip": {
+      "main": [
+        [{ "node": "Cek Berhasil?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Cek Berhasil?": {
+      "main": [
+        [{ "node": "Buat Ringkasan", "type": "main", "index": 0 }],
+        [{ "node": "Log Error", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    { "name": "autoclip-ai" },
+    { "name": "scheduler" }
+  ]
+}
