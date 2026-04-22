@@ -1,18 +1,7 @@
-/**
- * GET /api/health
- *
- * Health-check endpoint untuk monitoring & deployment verification.
- * Memeriksa: environment variables, binary tools (ffmpeg, yt-dlp),
- * dan koneksi Gemini API key.
- *
- * Response cepat — tidak menjalankan pipeline sungguhan.
- */
-
 import { NextResponse } from "next/server";
 import fs from "fs";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { appConfig } from "@/lib/autoclip/config";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 type CheckStatus = "ok" | "warn" | "error";
 
@@ -30,8 +19,6 @@ interface HealthResponse {
   checks: Check[];
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 function checkBinary(label: string, envPath: string | null | undefined): Check {
   if (envPath) {
     const exists = fs.existsSync(envPath);
@@ -43,30 +30,55 @@ function checkBinary(label: string, envPath: string | null | undefined): Check {
         : `Configured but NOT found at: ${envPath}`,
     };
   }
-  // Not configured via env — assume available on PATH (best-effort)
+
   return {
     name: label,
     status: "warn",
-    message: "Not set in .env — must be available on system PATH",
+    message: "Not set in .env; must be available on system PATH",
   };
 }
 
-// ─── Handler ──────────────────────────────────────────────────────────────────
+async function checkGeminiConnection(apiKey: string): Promise<Check> {
+  try {
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel(
+      { model: "gemini-2.0-flash" },
+      { apiVersion: "v1" }
+    );
+    const result = await model.generateContent("Reply with OK only.");
+    const text = result.response.text().trim();
 
-export async function GET(): Promise<NextResponse<HealthResponse>> {
+    return {
+      name: "Gemini API connection",
+      status: text ? "ok" : "warn",
+      message: text ? "Verified with live Gemini request" : "Gemini responded with empty text",
+    };
+  } catch (error) {
+    return {
+      name: "Gemini API connection",
+      status: "error",
+      message: error instanceof Error ? error.message : "Gemini verification failed",
+    };
+  }
+}
+
+export async function GET(request: Request): Promise<NextResponse<HealthResponse>> {
   const checks: Check[] = [];
+  const shouldVerifyGemini = new URL(request.url).searchParams.get("verify") === "gemini";
 
-  // 1. Gemini API key
   const geminiKey = process.env.GEMINI_API_KEY;
   checks.push({
     name: "GEMINI_API_KEY",
     status: geminiKey && geminiKey.length > 10 ? "ok" : "warn",
     message: geminiKey
-      ? "Present — Gemini transcription & analysis enabled"
-      : "Missing — transcription & analysis will use fallback heuristics",
+      ? "Present; Gemini transcription and analysis enabled"
+      : "Missing; transcription and analysis will use fallback heuristics",
   });
 
-  // 2. Pexels API key (optional — stock video)
+  if (shouldVerifyGemini && geminiKey && geminiKey.length > 10) {
+    checks.push(await checkGeminiConnection(geminiKey));
+  }
+
   const pexelsKey = process.env.PEXELS_API_KEY;
   checks.push({
     name: "PEXELS_API_KEY",
@@ -74,19 +86,13 @@ export async function GET(): Promise<NextResponse<HealthResponse>> {
     message:
       pexelsKey && pexelsKey !== "PASTE_YOUR_PEXELS_KEY_HERE"
         ? "Present"
-        : "Missing (optional — stock video for generation)",
+        : "Missing (optional; stock video for generation)",
   });
 
-  // 3. Binary: ffmpeg
   checks.push(checkBinary("ffmpeg", appConfig.binaries.ffmpeg));
-
-  // 4. Binary: ffprobe
   checks.push(checkBinary("ffprobe", appConfig.binaries.ffprobe));
-
-  // 5. Binary: yt-dlp
   checks.push(checkBinary("yt-dlp", appConfig.binaries.ytDlp));
 
-  // 6. Jobs directory writable
   const jobsDir = ".autoclip/jobs";
   try {
     fs.mkdirSync(jobsDir, { recursive: true });
@@ -95,28 +101,20 @@ export async function GET(): Promise<NextResponse<HealthResponse>> {
     checks.push({
       name: "jobs_storage",
       status: "error",
-      message: `Cannot write to ${jobsDir} — check permissions`,
+      message: `Cannot write to ${jobsDir}; check permissions`,
     });
   }
 
-  // ── Aggregate status ──────────────────────────────────────────────────────
   const hasError = checks.some((c) => c.status === "error");
   const hasWarn = checks.some((c) => c.status === "warn");
 
-  const overallStatus: HealthResponse["status"] = hasError
-    ? "unhealthy"
-    : hasWarn
-      ? "degraded"
-      : "healthy";
-
   const body: HealthResponse = {
-    status: overallStatus,
+    status: hasError ? "unhealthy" : hasWarn ? "degraded" : "healthy",
     timestamp: new Date().toISOString(),
     version: "0.1.0",
     uptime: process.uptime(),
     checks,
   };
 
-  // HTTP 200 even for degraded — only 503 for truly unhealthy
   return NextResponse.json(body, { status: hasError ? 503 : 200 });
 }

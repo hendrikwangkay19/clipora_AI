@@ -605,10 +605,11 @@ export default function Home() {
                   Masukkan video, pilih objective, lalu review clip siap distribusi.
                 </p>
               </div>
-              <div className="grid gap-3 sm:grid-cols-4">
+              <div className="grid gap-3 sm:grid-cols-5">
                 <MiniMetric label="Clips" value={result ? `${result.clips.length}` : "0"} />
                 <MiniMetric label="Target" value={`${maxClips}`} />
                 <MiniMetric label="Channel" value={`${channels.length}`} />
+                <MiniMetric label="AI" value={result ? (result.summary.analysisSource ?? "fallback") : "Ready"} />
                 <MiniMetric label="Mode" value={n8nConnected ? "n8n" : "Local"} />
               </div>
             </div>
@@ -831,6 +832,19 @@ export default function Home() {
             ) : null}
           </div>
 
+          {result?.warnings.length ? (
+            <div className="mb-5 rounded-[14px] border border-[rgba(198,132,71,0.26)] bg-[rgba(198,132,71,0.08)] p-4">
+              <p className="text-[12px] font-bold uppercase text-[var(--clay)]">AI fallback notice</p>
+              <div className="mt-2 space-y-1">
+                {result.warnings.map((warning) => (
+                  <p key={`${warning.step}-${warning.message}`} className="text-[13px] font-bold text-[var(--ink)]">
+                    {warning.step}: {warning.message}
+                  </p>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           {!result ? (
             <div className="soft-card p-8 text-center">
               <p className="text-lg font-bold">Belum ada project diproses.</p>
@@ -839,7 +853,12 @@ export default function Home() {
           ) : (
             <div className="grid gap-5 xl:grid-cols-[0.8fr_1.2fr_0.8fr]">
               <div className="soft-card max-h-[760px] overflow-auto p-4">
-                <p className="text-[12px] font-bold uppercase text-[var(--muted)]">Transcript</p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-[12px] font-bold uppercase text-[var(--muted)]">Transcript</p>
+                  <span className="rounded-full bg-[rgba(85,120,98,0.1)] px-3 py-1 text-[11px] font-bold uppercase text-[var(--sage-dark)]">
+                    {result.summary.transcriptSource}
+                  </span>
+                </div>
                 <p className="mt-3 text-[14px] leading-7 text-[var(--ink)]">{result.transcript.text}</p>
               </div>
 
@@ -856,7 +875,12 @@ export default function Home() {
               </div>
 
               <div className="soft-card p-4">
-                <p className="text-[12px] font-bold uppercase text-[var(--muted)]">Clip planning</p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-[12px] font-bold uppercase text-[var(--muted)]">Clip planning</p>
+                  <span className="rounded-full bg-[rgba(198,132,71,0.12)] px-3 py-1 text-[11px] font-bold uppercase text-[var(--clay)]">
+                    {result.summary.analysisSource ?? "fallback"}
+                  </span>
+                </div>
                 <div className="mt-4 space-y-3">
                   {result.segments.map((segment) => (
                     <div key={`${segment.rank}-${segment.start}`} className="rounded-[12px] border border-[var(--line)] bg-[rgba(255,255,255,0.38)] p-3">

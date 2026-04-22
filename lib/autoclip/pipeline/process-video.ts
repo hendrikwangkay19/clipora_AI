@@ -212,6 +212,7 @@ async function runPipeline(
     segments:   rankedSegments,
     clips,
     warnings,
+    analysisSource: analysisResult.source,
   });
 
   const resultPath = path.join(artifactsDir, "result.json");

@@ -18,12 +18,14 @@ export function buildProcessVideoResult(options: {
   segments: ScoredSegment[];
   clips: GeneratedClip[];
   warnings: PipelineWarning[];
+  analysisSource: "gemini" | "fallback";
 }): ProcessVideoResult {
   return {
     success: true,
     job: options.job,
     summary: {
       transcriptSource: options.transcript.source,
+      analysisSource: options.analysisSource,
       candidateCount: options.segments.length,
       selectedClipCount: options.clips.length,
       topScore: options.segments[0]?.score.total ?? null,

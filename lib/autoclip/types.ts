@@ -88,6 +88,7 @@ export type CliporaProjectContext = {
 
 export type JobSummary = {
   transcriptSource: TranscriptResult["source"];
+  analysisSource: "gemini" | "fallback";
   candidateCount: number;
   selectedClipCount: number;
   topScore: number | null;

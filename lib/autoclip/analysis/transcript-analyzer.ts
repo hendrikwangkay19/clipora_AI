@@ -85,7 +85,7 @@ export async function analyzeTranscriptWithFallback(
   if (isGeminiReady()) {
     try {
       const segments = await analyzeWithGemini(transcript, hookType);
-      if (segments.length > 0) return { segments };
+      if (segments.length > 0) return { segments, source: "gemini" as const };
       console.warn("[analysis] Gemini mengembalikan 0 segmen valid, fallback ke heuristik.");
     } catch (error) {
       console.error("[analysis] Gemini analysis error:", error);
@@ -97,6 +97,7 @@ export async function analyzeTranscriptWithFallback(
   // Fallback heuristik lokal
   return {
     segments: buildFallbackSegments(transcript.chunks),
+    source: "fallback" as const,
     warning: {
       step: "analyzing",
       message: isGeminiReady()
