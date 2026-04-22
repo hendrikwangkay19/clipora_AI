@@ -3,14 +3,10 @@
  */
 import { analyzeTranscript } from "@/lib/ai";
 import { buildFallbackSegments } from "@/lib/autoclip/analysis/fallback-analysis";
-import { CandidateSegment, TranscriptResult } from "@/lib/autoclip/types";
+import { appConfig } from "@/lib/autoclip/config";
+import { CandidateSegment, PipelineWarning, TranscriptResult } from "@/lib/autoclip/types";
 
 export type HookType = "viral" | "pertanyaan" | "cerita" | "tips";
-
-function isGeminiReady() {
-  const k = process.env.GEMINI_API_KEY?.trim() ?? "";
-  return k.length > 10;
-}
 
 /**
  * Potong transcript agar tidak melebihi batas token Gemini.
@@ -48,32 +44,27 @@ const HOOK_GOALS: Record<HookType, string> = {
 
 // ─── Gemini ───────────────────────────────────────────────────────────────────
 
-async function analyzeWithGemini(
+async function analyzeWithConfiguredProvider(
   transcript: TranscriptResult,
   hookType: HookType
-): Promise<CandidateSegment[]> {
+): Promise<{ source: "gemini" | "local"; segments: CandidateSegment[] }> {
   const { text } = truncateForAnalysis(transcript);
   const enrichedText = `[Goal: ${HOOK_GOALS[hookType]}]\n\n${text}`;
 
-  const raw = await analyzeTranscript(enrichedText);
+  const result = await analyzeTranscript(enrichedText);
 
-  const segments = raw as Array<{
-    start: number;
-    end: number;
-    text: string;
-    reason?: string;
-    keywords?: string[];
-  }>;
-
-  return segments
+  return {
+    source: result.source,
+    segments: result.segments
     .filter((s) => Number.isFinite(s.start) && Number.isFinite(s.end))
     .map((s) => ({
       start:    s.start,
       end:      s.end,
       text:     s.text,
-      reason:   s.reason ?? "Dipilih oleh AI (Gemini).",
+      reason:   s.reason ?? (result.source === "local" ? "Dipilih oleh AI lokal." : "Dipilih oleh AI Gemini."),
       keywords: Array.isArray(s.keywords) ? s.keywords : [],
-    }));
+    })),
+  };
 }
 
 // ─── Public entry ─────────────────────────────────────────────────────────────
@@ -81,17 +72,21 @@ async function analyzeWithGemini(
 export async function analyzeTranscriptWithFallback(
   transcript: TranscriptResult,
   hookType: HookType = "viral"
-) {
-  if (isGeminiReady()) {
+): Promise<{
+  source: "gemini" | "local" | "fallback";
+  segments: CandidateSegment[];
+  warning?: PipelineWarning;
+}> {
+  if (appConfig.ai.provider !== "fallback") {
     try {
-      const segments = await analyzeWithGemini(transcript, hookType);
-      if (segments.length > 0) return { segments, source: "gemini" as const };
-      console.warn("[analysis] Gemini mengembalikan 0 segmen valid, fallback ke heuristik.");
+      const result = await analyzeWithConfiguredProvider(transcript, hookType);
+      if (result.segments.length > 0) return result;
+      console.warn("[analysis] AI provider mengembalikan 0 segmen valid, fallback ke heuristik.");
     } catch (error) {
-      console.error("[analysis] Gemini analysis error:", error);
+      console.error("[analysis] AI analysis error:", error);
     }
   } else {
-    console.warn("[analysis] GEMINI_API_KEY tidak tersedia, skip Gemini.");
+    console.warn("[analysis] AI_PROVIDER=fallback, skip external/local AI.");
   }
 
   // Fallback heuristik lokal
@@ -100,9 +95,10 @@ export async function analyzeTranscriptWithFallback(
     source: "fallback" as const,
     warning: {
       step: "analyzing",
-      message: isGeminiReady()
-        ? "Analisis Gemini gagal, menggunakan heuristik lokal."
-        : "GEMINI_API_KEY belum dikonfigurasi. Tambahkan ke .env.local",
+      message:
+        appConfig.ai.provider === "fallback"
+          ? "AI_PROVIDER=fallback, menggunakan heuristik lokal."
+          : "Analisis AI belum tersedia atau gagal, menggunakan heuristik lokal.",
     },
   };
 }

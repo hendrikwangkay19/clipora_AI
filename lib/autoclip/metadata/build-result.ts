@@ -18,7 +18,7 @@ export function buildProcessVideoResult(options: {
   segments: ScoredSegment[];
   clips: GeneratedClip[];
   warnings: PipelineWarning[];
-  analysisSource: "gemini" | "fallback";
+  analysisSource: "gemini" | "local" | "fallback";
 }): ProcessVideoResult {
   return {
     success: true,

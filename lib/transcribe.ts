@@ -1,9 +1,12 @@
 import fs from "fs";
+import path from "path";
 import { stat } from "fs/promises";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { appConfig } from "@/lib/autoclip/config";
+import { runCommand } from "@/lib/autoclip/tools/command";
 
 function getGeminiClient() {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = appConfig.ai.gemini.apiKey;
 
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY belum terbaca dari .env.local");
@@ -12,31 +15,20 @@ function getGeminiClient() {
   return new GoogleGenerativeAI(apiKey);
 }
 
-/**
- * Batas ukuran file untuk inline base64 (4MB).
- * File lebih besar dari ini akan menggunakan chunked reading
- * untuk menghindari memory spike.
- */
 const INLINE_SIZE_LIMIT = 4 * 1024 * 1024;
 
-/**
- * Membaca file audio secara chunked dan convert ke base64
- * untuk mengurangi peak memory usage dibandingkan readFileSync.
- */
 async function readFileAsBase64(filePath: string): Promise<string> {
   const fileSize = (await stat(filePath)).size;
 
-  // File kecil: baca langsung (lebih cepat)
   if (fileSize <= INLINE_SIZE_LIMIT) {
     return fs.readFileSync(filePath).toString("base64");
   }
 
-  // File besar: baca secara streaming ke buffer chunks
-  console.log(`[transcribe.ts] File besar (${(fileSize / 1024 / 1024).toFixed(1)}MB), menggunakan chunked read.`);
+  console.log(`[transcribe] File besar (${(fileSize / 1024 / 1024).toFixed(1)}MB), menggunakan chunked read.`);
 
   return new Promise<string>((resolve, reject) => {
     const chunks: Buffer[] = [];
-    const stream = fs.createReadStream(filePath, { highWaterMark: 256 * 1024 }); // 256KB chunks
+    const stream = fs.createReadStream(filePath, { highWaterMark: 256 * 1024 });
 
     stream.on("data", (chunk: string | Buffer) => {
       chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
@@ -45,7 +37,6 @@ async function readFileAsBase64(filePath: string): Promise<string> {
     stream.on("end", () => {
       const fullBuffer = Buffer.concat(chunks);
       resolve(fullBuffer.toString("base64"));
-      // Help GC by clearing references
       chunks.length = 0;
     });
 
@@ -53,14 +44,14 @@ async function readFileAsBase64(filePath: string): Promise<string> {
   });
 }
 
-export async function transcribeAudio(filePath: string): Promise<string> {
+export async function transcribeAudioWithGemini(filePath: string): Promise<string> {
   if (!fs.existsSync(filePath)) {
     throw new Error(`File audio tidak ditemukan: ${filePath}`);
   }
 
   const genAI = getGeminiClient();
   const model = genAI.getGenerativeModel(
-    { model: "gemini-2.0-flash" },
+    { model: appConfig.ai.gemini.model },
     { apiVersion: "v1" }
   );
 
@@ -79,34 +70,75 @@ export async function transcribeAudio(filePath: string): Promise<string> {
   };
   const mimeType = mimeTypeMap[ext] ?? "audio/mp3";
 
-  console.log(`[transcribe.ts] Mengirim audio ke Gemini — file: ${filePath}, size: ${fileSize} bytes, mimeType: ${mimeType}`);
+  console.log(`[transcribe] Mengirim audio ke Gemini (${appConfig.ai.gemini.model}) size=${fileSize}, mime=${mimeType}`);
 
-  let result;
-  try {
-    result = await model.generateContent([
-      {
-        inlineData: {
-          mimeType,
-          data: base64Audio,
-        },
+  const result = await model.generateContent([
+    {
+      inlineData: {
+        mimeType,
+        data: base64Audio,
       },
-      "Transkripsi seluruh audio ini secara lengkap dan akurat. Kembalikan hanya teks transkripsi tanpa penjelasan tambahan.",
-    ]);
-  } catch (err) {
-    console.error("[transcribe.ts] ERROR saat memanggil Gemini generateContent:");
-    console.error("  message  :", err instanceof Error ? err.message : String(err));
-    console.error("  status   :", (err as Record<string, unknown>)?.status ?? "n/a");
-    console.error("  errorDetails:", JSON.stringify((err as Record<string, unknown>)?.errorDetails ?? null));
-    throw err;
-  }
+    },
+    "Transkripsi seluruh audio ini secara lengkap dan akurat. Kembalikan hanya teks transkripsi tanpa penjelasan tambahan.",
+  ]);
 
   const text = result.response.text().trim();
 
   if (!text) {
-    console.error("[transcribe.ts] Gemini mengembalikan respons kosong.");
     throw new Error("Transkripsi gagal: respons kosong dari Gemini");
   }
 
-  console.log(`[transcribe.ts] Transkripsi berhasil — ${text.length} karakter`);
+  return text;
+}
+
+export async function transcribeAudioWithLocalWhisper(
+  filePath: string,
+  language?: string
+): Promise<string> {
+  const binaryPath = appConfig.ai.whisper.binaryPath;
+  const modelPath = appConfig.ai.whisper.modelPath;
+
+  if (!binaryPath || !modelPath) {
+    throw new Error("WHISPER_CPP_PATH dan WHISPER_MODEL_PATH belum dikonfigurasi");
+  }
+
+  if (!fs.existsSync(binaryPath)) {
+    throw new Error(`Whisper binary tidak ditemukan: ${binaryPath}`);
+  }
+
+  if (!fs.existsSync(modelPath)) {
+    throw new Error(`Whisper model tidak ditemukan: ${modelPath}`);
+  }
+
+  const outputBase = path.join(
+    path.dirname(filePath),
+    `whisper-${path.basename(filePath, path.extname(filePath))}-${Date.now()}`
+  );
+
+  const args = [
+    "-m",
+    modelPath,
+    "-f",
+    filePath,
+    "-otxt",
+    "-of",
+    outputBase,
+  ];
+
+  if (language && language !== "auto") {
+    args.push("-l", language);
+  }
+
+  console.log(`[transcribe] Menjalankan Whisper lokal: ${binaryPath}`);
+  const { stdout } = await runCommand(binaryPath, args, { maxBuffer: 1024 * 1024 * 64 });
+  const outputPath = `${outputBase}.txt`;
+  const text = fs.existsSync(outputPath)
+    ? fs.readFileSync(outputPath, "utf8").trim()
+    : stdout.trim();
+
+  if (!text) {
+    throw new Error("Whisper lokal tidak menghasilkan transkripsi");
+  }
+
   return text;
 }

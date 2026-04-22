@@ -42,7 +42,7 @@ async function checkGeminiConnection(apiKey: string): Promise<Check> {
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel(
-      { model: "gemini-2.0-flash" },
+      { model: appConfig.ai.gemini.model },
       { apiVersion: "v1" }
     );
     const result = await model.generateContent("Reply with OK only.");
@@ -62,22 +62,86 @@ async function checkGeminiConnection(apiKey: string): Promise<Check> {
   }
 }
 
+async function checkOllamaConnection(): Promise<Check> {
+  try {
+    const response = await fetch(`${appConfig.ai.ollama.baseUrl}/api/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: appConfig.ai.ollama.model,
+        prompt: "Reply with OK only.",
+        stream: false,
+      }),
+    });
+
+    if (!response.ok) {
+      return {
+        name: "Ollama connection",
+        status: "error",
+        message: `Ollama responded ${response.status}: ${await response.text()}`,
+      };
+    }
+
+    return {
+      name: "Ollama connection",
+      status: "ok",
+      message: `Verified local model ${appConfig.ai.ollama.model}`,
+    };
+  } catch (error) {
+    return {
+      name: "Ollama connection",
+      status: "error",
+      message: error instanceof Error ? error.message : "Ollama verification failed",
+    };
+  }
+}
+
 export async function GET(request: Request): Promise<NextResponse<HealthResponse>> {
   const checks: Check[] = [];
-  const shouldVerifyGemini = new URL(request.url).searchParams.get("verify") === "gemini";
+  const verify = new URL(request.url).searchParams.get("verify");
 
-  const geminiKey = process.env.GEMINI_API_KEY;
+  checks.push({
+    name: "AI_PROVIDER",
+    status: "ok",
+    message: appConfig.ai.provider,
+  });
+
+  const geminiKey = appConfig.ai.gemini.apiKey;
   checks.push({
     name: "GEMINI_API_KEY",
     status: geminiKey && geminiKey.length > 10 ? "ok" : "warn",
     message: geminiKey
-      ? "Present; Gemini transcription and analysis enabled"
+      ? `Present; Gemini model ${appConfig.ai.gemini.model}`
       : "Missing; transcription and analysis will use fallback heuristics",
   });
 
-  if (shouldVerifyGemini && geminiKey && geminiKey.length > 10) {
+  if (verify === "gemini" && geminiKey && geminiKey.length > 10) {
     checks.push(await checkGeminiConnection(geminiKey));
   }
+
+  checks.push({
+    name: "Ollama local AI",
+    status: appConfig.ai.provider === "local" || appConfig.ai.provider === "auto" ? "warn" : "ok",
+    message: `${appConfig.ai.ollama.baseUrl} using ${appConfig.ai.ollama.model}`,
+  });
+
+  if (verify === "local") {
+    checks.push(await checkOllamaConnection());
+  }
+
+  checks.push({
+    name: "Whisper local transcription",
+    status:
+      appConfig.ai.whisper.binaryPath && appConfig.ai.whisper.modelPath
+        ? fs.existsSync(appConfig.ai.whisper.binaryPath) && fs.existsSync(appConfig.ai.whisper.modelPath)
+          ? "ok"
+          : "error"
+        : "warn",
+    message:
+      appConfig.ai.whisper.binaryPath && appConfig.ai.whisper.modelPath
+        ? "Configured via WHISPER_CPP_PATH and WHISPER_MODEL_PATH"
+        : "Not configured; local transcription will use fallback unless Gemini works",
+  });
 
   const pexelsKey = process.env.PEXELS_API_KEY;
   checks.push({

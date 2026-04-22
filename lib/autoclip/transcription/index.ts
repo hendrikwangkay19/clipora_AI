@@ -1,108 +1,168 @@
-/**
- * Transkripsi menggunakan Gemini → fallback heuristik lokal.
- */
-import { transcribeAudio } from "@/lib/transcribe";
-import { TranscriptChunk, TranscriptResult } from "@/lib/autoclip/types";
-
-// ─── Key helper ───────────────────────────────────────────────────────────────
+import {
+  transcribeAudioWithGemini,
+  transcribeAudioWithLocalWhisper,
+} from "@/lib/transcribe";
+import { appConfig } from "@/lib/autoclip/config";
+import { PipelineWarning, TranscriptChunk, TranscriptResult } from "@/lib/autoclip/types";
 
 function isGeminiReady() {
-  const k = process.env.GEMINI_API_KEY?.trim() ?? "";
-  return k.length > 10;
+  return Boolean(appConfig.ai.gemini.apiKey && appConfig.ai.gemini.apiKey.length > 10);
 }
 
-// ─── Fallback heuristik ───────────────────────────────────────────────────────
+function isLocalWhisperReady() {
+  return Boolean(appConfig.ai.whisper.binaryPath && appConfig.ai.whisper.modelPath);
+}
+
+function splitIntoChunks(text: string, durationSeconds: number): TranscriptChunk[] {
+  const sentences = text
+    .split(/(?<=[.!?])\s+|\r?\n+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+
+  const safeDuration = Math.max(1, durationSeconds);
+  const chunkDuration = safeDuration / Math.max(sentences.length, 1);
+
+  return sentences.length > 0
+    ? sentences.map((sentence, index) => ({
+        start: Math.round(index * chunkDuration * 10) / 10,
+        end: Math.round((index + 1) * chunkDuration * 10) / 10,
+        text: sentence,
+      }))
+    : [{ start: 0, end: safeDuration, text }];
+}
 
 function buildFallbackChunks(durationSeconds: number): TranscriptChunk[] {
   const safe = Math.max(45, Math.round(durationSeconds) || 90);
-  const size = Math.max(15, Math.floor(safe / 4));
+  const size = Math.max(15, Math.floor(safe / 5));
   const texts = [
-    "Bagian pembuka menetapkan janji yang jelas dan menarik perhatian audiens.",
-    "Bagian ini menyoroti wawasan praktis dan taktik yang bisa langsung diterapkan.",
-    "Momen ini menambah rasa ingin tahu dengan sudut pandang yang mengejutkan.",
-    "Bagian penutup menyampaikan kesimpulan dengan ringkasan yang kuat dan berkesan.",
+    "Bagian awal biasanya menjadi hook utama: perhatikan janji, masalah, atau konteks yang memancing rasa ingin tahu.",
+    "Bagian berikutnya diperlakukan sebagai momen edukatif yang dapat dibuat menjadi insight singkat untuk audiens.",
+    "Bagian tengah dianalisis sebagai potensi cerita, konflik, atau perubahan sudut pandang yang cocok untuk short clip.",
+    "Bagian ini bisa menjadi konten tips karena memuat penjelasan yang dapat dipotong menjadi langkah praktis.",
+    "Bagian akhir sering cocok untuk rangkuman, CTA, atau penutup yang mengarahkan audiens ke aksi berikutnya.",
   ];
-  return texts.map<TranscriptChunk>((text, i) => ({
-    start: i * size,
-    end: Math.min((i + 1) * size, safe),
+
+  return texts.map<TranscriptChunk>((text, index) => ({
+    start: index * size,
+    end: Math.min((index + 1) * size, safe),
     text,
   }));
 }
 
 function summarize(chunks: TranscriptChunk[]) {
-  return chunks.slice(0, 3).map((c) => c.text).join(" ").slice(0, 280);
+  return chunks.slice(0, 3).map((chunk) => chunk.text).join(" ").slice(0, 280);
 }
 
-// ─── Gemini ───────────────────────────────────────────────────────────────────
-
-async function transcribeWithGemini(
-  audioPath: string,
+async function buildTranscript(
+  source: "gemini" | "local",
+  text: string,
   durationSeconds: number,
   language?: string
 ): Promise<TranscriptResult> {
-  const text = await transcribeAudio(audioPath);
-
-  const sentences = text
-    .split(/(?<=[.!?])\s+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-
-  const chunkDuration = durationSeconds / Math.max(sentences.length, 1);
-  const chunks: TranscriptChunk[] =
-    sentences.length > 0
-      ? sentences.map((s, i) => ({
-          start: Math.round(i * chunkDuration * 10) / 10,
-          end: Math.round((i + 1) * chunkDuration * 10) / 10,
-          text: s,
-        }))
-      : [{ start: 0, end: durationSeconds, text }];
-
+  const chunks = splitIntoChunks(text, durationSeconds);
   return {
     text,
     chunks,
-    source: "gemini",
+    source,
     language: language ?? "id",
     summary: summarize(chunks),
   };
 }
 
-// ─── Public entry ─────────────────────────────────────────────────────────────
+async function tryGemini(options: {
+  audioPath: string;
+  durationSeconds: number;
+  language?: string;
+}) {
+  const text = await transcribeAudioWithGemini(options.audioPath);
+  return buildTranscript("gemini", text, options.durationSeconds, options.language);
+}
+
+async function tryLocalWhisper(options: {
+  audioPath: string;
+  durationSeconds: number;
+  language?: string;
+}) {
+  const text = await transcribeAudioWithLocalWhisper(options.audioPath, options.language);
+  return buildTranscript("local", text, options.durationSeconds, options.language);
+}
+
+function fallbackWarning(errors: string[]): PipelineWarning {
+  const provider = appConfig.ai.provider;
+
+  if (provider === "local" && !isLocalWhisperReady()) {
+    return {
+      step: "transcribing",
+      message: "Mode local aktif, tetapi WHISPER_CPP_PATH/WHISPER_MODEL_PATH belum diatur. Menggunakan fallback sementara.",
+    };
+  }
+
+  if (provider === "gemini" && !isGeminiReady()) {
+    return {
+      step: "transcribing",
+      message: "Mode Gemini aktif, tetapi GEMINI_API_KEY belum tersedia. Menggunakan fallback sementara.",
+    };
+  }
+
+  return {
+    step: "transcribing",
+    message: errors.length
+      ? `Transkripsi AI gagal (${errors.join(" | ")}). Menggunakan fallback sementara.`
+      : "Tidak ada provider transkripsi AI yang siap. Menggunakan fallback sementara.",
+  };
+}
 
 export async function transcribeAudioWithFallback(options: {
   audioPath: string;
   durationSeconds: number;
   language?: string;
 }) {
-  if (isGeminiReady()) {
-    try {
-      const transcript = await transcribeWithGemini(
-        options.audioPath,
-        options.durationSeconds,
-        options.language
-      );
-      return { transcript };
-    } catch (error) {
-      console.error("[transcription] Gemini transcription error:", error);
+  const provider = appConfig.ai.provider;
+  const errors: string[] = [];
+
+  if (provider === "local") {
+    if (isLocalWhisperReady()) {
+      try {
+        return { transcript: await tryLocalWhisper(options) };
+      } catch (error) {
+        errors.push(`Whisper local: ${error instanceof Error ? error.message : String(error)}`);
+      }
     }
-  } else {
-    console.warn("[transcription] GEMINI_API_KEY tidak tersedia, skip Gemini.");
+  } else if (provider === "gemini") {
+    if (isGeminiReady()) {
+      try {
+        return { transcript: await tryGemini(options) };
+      } catch (error) {
+        errors.push(`Gemini: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+  } else if (provider === "auto") {
+    if (isLocalWhisperReady()) {
+      try {
+        return { transcript: await tryLocalWhisper(options) };
+      } catch (error) {
+        errors.push(`Whisper local: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+
+    if (isGeminiReady()) {
+      try {
+        return { transcript: await tryGemini(options) };
+      } catch (error) {
+        errors.push(`Gemini: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
   }
 
-  // Fallback heuristik
   const chunks = buildFallbackChunks(options.durationSeconds);
   return {
     transcript: {
-      text: chunks.map((c) => c.text).join(" "),
+      text: chunks.map((chunk) => chunk.text).join(" "),
       chunks,
       source: "fallback" as const,
       language: "id",
       summary: summarize(chunks),
     },
-    warning: {
-      step: "transcribing",
-      message: isGeminiReady()
-        ? "Transkripsi Gemini gagal, menggunakan heuristik lokal."
-        : "GEMINI_API_KEY belum dikonfigurasi. Tambahkan ke .env.local",
-    },
+    warning: fallbackWarning(errors),
   };
 }

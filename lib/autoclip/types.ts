@@ -27,7 +27,7 @@ export type TranscriptChunk = {
 export type TranscriptResult = {
   text: string;
   chunks: TranscriptChunk[];
-  source: "gemini" | "fallback";
+  source: "gemini" | "local" | "fallback";
   language?: string;
   summary: string;
 };
@@ -88,7 +88,7 @@ export type CliporaProjectContext = {
 
 export type JobSummary = {
   transcriptSource: TranscriptResult["source"];
-  analysisSource: "gemini" | "fallback";
+  analysisSource: "gemini" | "local" | "fallback";
   candidateCount: number;
   selectedClipCount: number;
   topScore: number | null;
