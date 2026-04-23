@@ -392,6 +392,7 @@ export default function Home() {
   const fileRef = useRef<HTMLInputElement>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const contentStudioRef = useRef<HTMLElement | null>(null);
 
   const context = useMemo<CliporaProjectContext>(() => ({
     projectName,
@@ -405,6 +406,29 @@ export default function Home() {
 
   const selectedObjective = OBJECTIVES.find((item) => item.value === objective) ?? OBJECTIVES[0];
 
+  const scrollToStudio = useCallback(() => {
+    window.setTimeout(() => {
+      contentStudioRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 120);
+  }, []);
+
+  const loadLatestResult = useCallback(async () => {
+    const response = await fetch("/api/jobs/latest");
+    if (!response.ok) return false;
+
+    const data = await response.json();
+    if (!data?.success || !data.result) return false;
+
+    const latest = data.result as ProcessVideoResult;
+    setResult(latest);
+    setState("done");
+    setProjectName(data.job?.cliporaContext?.projectName ?? "Latest Clipora Project");
+    setWorkspaceName(data.job?.cliporaContext?.workspaceName ?? "Hendrik Studio");
+    setCta(data.job?.cliporaContext?.cta ?? "Chat WhatsApp untuk order hari ini");
+    scrollToStudio();
+    return true;
+  }, [scrollToStudio]);
+
   useEffect(() => {
     fetch("/api/n8n")
       .then((response) => response.json())
@@ -413,19 +437,12 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    fetch("/api/jobs/latest")
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data) => {
-        if (!data?.success || !data.result) return;
-        const latest = data.result as ProcessVideoResult;
-        setResult(latest);
-        setState("done");
-        setProjectName(data.job?.cliporaContext?.projectName ?? "Latest Clipora Project");
-        setWorkspaceName(data.job?.cliporaContext?.workspaceName ?? "Hendrik Studio");
-        setCta(data.job?.cliporaContext?.cta ?? "Chat WhatsApp untuk order hari ini");
-      })
-      .catch(() => null);
-  }, []);
+    const id = window.setTimeout(() => {
+      void loadLatestResult().catch(() => null);
+    }, 0);
+
+    return () => window.clearTimeout(id);
+  }, [loadLatestResult]);
 
   useEffect(() => {
     if (!result || !n8nInfo?.notified) return;
@@ -501,7 +518,8 @@ export default function Home() {
     setResult(data);
     setN8nInfo(data.n8n ?? null);
     setState("done");
-  }, []);
+    scrollToStudio();
+  }, [scrollToStudio]);
 
   const handleFile = useCallback(async (file: File) => {
     setState("uploading");
@@ -544,10 +562,12 @@ export default function Home() {
       handleResult(data);
     } catch (err) {
       stopTimer();
+      const recovered = await loadLatestResult().catch(() => false);
+      if (recovered) return;
       setError(err instanceof Error ? err.message : "Error tidak diketahui.");
       setState("error");
     }
-  }, [callProcess, handleResult]);
+  }, [callProcess, handleResult, loadLatestResult]);
 
   const handleUrl = useCallback(async () => {
     if (!url.trim()) return;
@@ -563,10 +583,12 @@ export default function Home() {
       handleResult(data);
     } catch (err) {
       stopTimer();
+      const recovered = await loadLatestResult().catch(() => false);
+      if (recovered) return;
       setError(err instanceof Error ? err.message : "Error tidak diketahui.");
       setState("error");
     }
-  }, [callProcess, handleResult, url]);
+  }, [callProcess, handleResult, loadLatestResult, url]);
 
   const toggleChannel = (channel: TargetChannel) => {
     setChannels((current) => (
@@ -819,17 +841,22 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="content-studio" className="clipora-card p-5 lg:p-6">
+        <section id="content-studio" ref={contentStudioRef} className="clipora-card p-5 lg:p-6">
           <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="text-[12px] font-bold uppercase text-[var(--sage-dark)]">Content Studio MVP</p>
               <h2 className="mt-1 text-2xl font-extrabold">Review outputs</h2>
             </div>
-            {n8nInfo ? (
-              <span className="rounded-full bg-[rgba(85,120,98,0.1)] px-4 py-2 text-[12px] font-bold text-[var(--sage-dark)]">
-                {n8nInfo.notified ? "n8n post-processing active" : "Local output only"}
-              </span>
-            ) : null}
+            <div className="flex flex-wrap items-center gap-2">
+              {n8nInfo ? (
+                <span className="rounded-full bg-[rgba(85,120,98,0.1)] px-4 py-2 text-[12px] font-bold text-[var(--sage-dark)]">
+                  {n8nInfo.notified ? "n8n post-processing active" : "Local output only"}
+                </span>
+              ) : null}
+              <button type="button" className="ghost-button" onClick={() => void loadLatestResult()}>
+                Refresh latest
+              </button>
+            </div>
           </div>
 
           {result?.warnings.length ? (
