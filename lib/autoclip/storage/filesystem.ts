@@ -26,7 +26,7 @@ export function getArtifactsDir(jobId: string) {
 
 export function toPublicRelativePath(filePath: string) {
   const relativePath = path
-    .relative(/* turbopackIgnore: true */ process.cwd(), filePath)
+    .relative(appConfig.dataDir, filePath)
     .replaceAll("\\", "/");
-  return relativePath.startsWith(".autoclip/") ? relativePath : `.autoclip/${relativePath}`;
+  return `.autoclip/${relativePath}`;
 }

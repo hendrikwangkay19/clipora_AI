@@ -32,12 +32,24 @@ export type TranscriptResult = {
   summary: string;
 };
 
+export type MomentType =
+  | "hook"
+  | "humor"
+  | "punchline"
+  | "insight"
+  | "emosi"
+  | "kontroversial";
+
 export type CandidateSegment = {
-  start: number;
-  end: number;
+  start: number;        // detik
+  end: number;          // detik
   text: string;
   reason: string;
   keywords: string[];
+  // Extended fields dari AI Analysis — optional untuk backward-compat
+  momentType?: MomentType;
+  aiScore?: number;         // 0.0–1.0 dari AI
+  hookSuggestion?: string;  // kalimat pembuka untuk caption/overlay
 };
 
 export type ScoreBreakdown = {

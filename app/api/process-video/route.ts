@@ -33,9 +33,9 @@ export async function POST(req: Request) {
 
     const options: ProcessOptions = {
       aspectRatio: body.aspectRatio ?? "16:9",
-      maxClips: typeof body.maxClips === "number" ? Math.min(body.maxClips, 10) : 5,
+      maxClips: typeof body.maxClips === "number" ? Math.min(body.maxClips, 10) : 3,
       burnSubtitles: body.burnSubtitles !== false,
-      subtitleStyle: body.subtitleStyle ?? "classic",
+      subtitleStyle: body.subtitleStyle ?? "bold",
       // Default: zoom OFF (sangat CPU-intensive), fade ON, colorGrade OFF
       effects: {
         zoom: body.effects?.zoom ?? false,

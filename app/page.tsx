@@ -377,8 +377,8 @@ export default function Home() {
   const [cta, setCta] = useState("Chat WhatsApp untuk order hari ini");
   const [channels, setChannels] = useState<TargetChannel[]>(["instagram_reels", "tiktok", "whatsapp"]);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>("9:16");
-  const [maxClips, setMaxClips] = useState<3 | 5 | 10>(5);
-  const [subtitleStyle, setSubtitleStyle] = useState<SubtitleStyle>("classic");
+  const [maxClips, setMaxClips] = useState<3 | 5 | 10>(3);
+  const [subtitleStyle, setSubtitleStyle] = useState<SubtitleStyle>("bold");
   const [hookType, setHookType] = useState<HookType>("viral");
   const [language, setLanguage] = useState<Language>("auto");
   const [uploadPct, setUploadPct] = useState(0);
@@ -512,11 +512,27 @@ export default function Home() {
     return data;
   }, [aspectRatio, context, hookType, language, maxClips, subtitleStyle]);
 
-  const handleResult = useCallback((data: ProcessResponse) => {
+  const handleResult = useCallback(async (data: ProcessResponse) => {
     stopTimer();
     setStep(STEPS.length);
-    setResult(data);
     setN8nInfo(data.n8n ?? null);
+
+    // Fetch fresh result from disk using the new job ID — this is the authoritative source
+    try {
+      const res = await fetch(`/api/jobs/${data.job.id}`);
+      if (res.ok) {
+        const json = await res.json() as { success: boolean; job?: { result?: ProcessVideoResult } };
+        if (json.success && json.job?.result) {
+          setResult(json.job.result);
+          setState("done");
+          scrollToStudio();
+          return;
+        }
+      }
+    } catch { /* ignore, fall through to direct response */ }
+
+    // Fallback: render directly from the callProcess response
+    setResult(data as unknown as ProcessVideoResult);
     setState("done");
     scrollToStudio();
   }, [scrollToStudio]);
@@ -559,15 +575,13 @@ export default function Home() {
       setState("processing");
       startTimer();
       const data = await callProcess({ localPath });
-      handleResult(data);
+      await handleResult(data);
     } catch (err) {
       stopTimer();
-      const recovered = await loadLatestResult().catch(() => false);
-      if (recovered) return;
       setError(err instanceof Error ? err.message : "Error tidak diketahui.");
       setState("error");
     }
-  }, [callProcess, handleResult, loadLatestResult]);
+  }, [callProcess, handleResult]);
 
   const handleUrl = useCallback(async () => {
     if (!url.trim()) return;
@@ -580,15 +594,13 @@ export default function Home() {
 
     try {
       const data = await callProcess({ url: url.trim() });
-      handleResult(data);
+      await handleResult(data);
     } catch (err) {
       stopTimer();
-      const recovered = await loadLatestResult().catch(() => false);
-      if (recovered) return;
       setError(err instanceof Error ? err.message : "Error tidak diketahui.");
       setState("error");
     }
-  }, [callProcess, handleResult, loadLatestResult, url]);
+  }, [callProcess, handleResult, url]);
 
   const toggleChannel = (channel: TargetChannel) => {
     setChannels((current) => (

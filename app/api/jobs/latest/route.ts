@@ -6,7 +6,13 @@ export const runtime = "nodejs";
 export async function GET() {
   try {
     const jobs = await listJobs();
-    const latest = jobs.find((job) => job.status === "completed" && job.result);
+    const latest = jobs.find(
+      (job) =>
+        job.status === "completed" &&
+        job.result &&
+        Array.isArray(job.result.clips) &&
+        job.result.clips.length > 0
+    );
 
     if (!latest) {
       return Response.json(

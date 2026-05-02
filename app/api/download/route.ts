@@ -1,5 +1,6 @@
 import path from "path";
 import { NextRequest, NextResponse } from "next/server";
+import { appConfig } from "@/lib/autoclip/config";
 import { downloadYoutubeVideo, isYoutubeUrl } from "@/lib/autoclip/downloader/youtube";
 import { toErrorResponse } from "@/lib/autoclip/errors";
 import { ensureDir } from "@/lib/autoclip/storage/filesystem";
@@ -7,7 +8,7 @@ import { ensureDir } from "@/lib/autoclip/storage/filesystem";
 export const runtime = "nodejs";
 export const maxDuration = 180;
 
-const DOWNLOADS_DIR = path.join(process.cwd(), ".autoclip", "downloads");
+const DOWNLOADS_DIR = path.join(appConfig.dataDir, "downloads");
 
 export async function POST(req: NextRequest) {
   try {

@@ -1,32 +1,34 @@
-import {
-  transcribeAudioWithGemini,
-  transcribeAudioWithLocalWhisper,
-} from "@/lib/transcribe";
+import fs from "fs";
+import path from "path";
+import { transcribeAudioWithLocalWhisper } from "@/lib/transcribe";
 import { appConfig } from "@/lib/autoclip/config";
+import { runCommand } from "@/lib/autoclip/tools/command";
 import { PipelineWarning, TranscriptChunk, TranscriptResult } from "@/lib/autoclip/types";
-
-function isGeminiReady() {
-  return Boolean(appConfig.ai.gemini.apiKey && appConfig.ai.gemini.apiKey.length > 10);
-}
 
 function isLocalWhisperReady() {
   return Boolean(appConfig.ai.whisper.binaryPath && appConfig.ai.whisper.modelPath);
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function summarize(chunks: TranscriptChunk[]): string {
+  return chunks.slice(0, 3).map((c) => c.text).join(" ").slice(0, 280);
+}
+
 function splitIntoChunks(text: string, durationSeconds: number): TranscriptChunk[] {
   const sentences = text
     .split(/(?<=[.!?])\s+|\r?\n+/)
-    .map((sentence) => sentence.trim())
+    .map((s) => s.trim())
     .filter(Boolean);
 
   const safeDuration = Math.max(1, durationSeconds);
   const chunkDuration = safeDuration / Math.max(sentences.length, 1);
 
   return sentences.length > 0
-    ? sentences.map((sentence, index) => ({
-        start: Math.round(index * chunkDuration * 10) / 10,
-        end: Math.round((index + 1) * chunkDuration * 10) / 10,
-        text: sentence,
+    ? sentences.map((sentence, i) => ({
+        start: Math.round(i * chunkDuration * 10) / 10,
+        end:   Math.round((i + 1) * chunkDuration * 10) / 10,
+        text:  sentence,
       }))
     : [{ start: 0, end: safeDuration, text }];
 }
@@ -42,126 +44,182 @@ function buildFallbackChunks(durationSeconds: number): TranscriptChunk[] {
     "Bagian akhir sering cocok untuk rangkuman, CTA, atau penutup yang mengarahkan audiens ke aksi berikutnya.",
   ];
 
-  return texts.map<TranscriptChunk>((text, index) => ({
-    start: index * size,
-    end: Math.min((index + 1) * size, safe),
+  return texts.map<TranscriptChunk>((text, i) => ({
+    start: i * size,
+    end:   Math.min((i + 1) * size, safe),
     text,
   }));
 }
 
-function summarize(chunks: TranscriptChunk[]) {
-  return chunks.slice(0, 3).map((chunk) => chunk.text).join(" ").slice(0, 280);
+// ─── VTT Parsing (timestamp nyata dari Whisper) ───────────────────────────────
+
+function parseVTTTime(timeStr: string): number {
+  // Accepts HH:MM:SS.mmm or MM:SS.mmm
+  const parts = timeStr.trim().split(":");
+  if (parts.length === 3) {
+    return parseFloat(parts[0]) * 3600 + parseFloat(parts[1]) * 60 + parseFloat(parts[2]);
+  }
+  if (parts.length === 2) {
+    return parseFloat(parts[0]) * 60 + parseFloat(parts[1]);
+  }
+  return NaN;
 }
 
-async function buildTranscript(
-  source: "gemini" | "local",
-  text: string,
-  durationSeconds: number,
-  language?: string
-): Promise<TranscriptResult> {
-  const chunks = splitIntoChunks(text, durationSeconds);
-  return {
-    text,
-    chunks,
-    source,
-    language: language ?? "id",
-    summary: summarize(chunks),
-  };
+function parseVTT(vttText: string): TranscriptChunk[] {
+  const chunks: TranscriptChunk[] = [];
+
+  for (const block of vttText.split(/\n\n+/)) {
+    const lines = block.trim().split("\n");
+    const timeIdx = lines.findIndex((l) => l.includes("-->"));
+    if (timeIdx === -1) continue;
+
+    const [startStr, endStr] = lines[timeIdx].split("-->").map((s) => s.trim());
+    const start = parseVTTTime(startStr);
+    const end   = parseVTTTime(endStr);
+    if (!Number.isFinite(start) || !Number.isFinite(end)) continue;
+
+    const text = lines.slice(timeIdx + 1).join(" ").replace(/<[^>]+>/g, "").trim();
+    if (!text) continue;
+
+    chunks.push({ start, end, text });
+  }
+
+  return chunks;
 }
 
-async function tryGemini(options: {
+// ─── Whisper Caller ───────────────────────────────────────────────────────────
+
+async function convertToWav(audioPath: string): Promise<string> {
+  const ffmpegPath = appConfig.binaries.ffmpeg;
+  if (!ffmpegPath) throw new Error("FFMPEG_PATH belum dikonfigurasi");
+
+  const wavPath = path.join(
+    path.dirname(audioPath),
+    `${path.basename(audioPath, path.extname(audioPath))}-whisper.wav`
+  );
+
+  // Whisper.cpp hanya menerima WAV 16kHz mono 16-bit PCM
+  await runCommand(ffmpegPath, [
+    "-y", "-i", audioPath,
+    "-ar", "16000",
+    "-ac", "1",
+    "-c:a", "pcm_s16le",
+    wavPath,
+  ], { maxBuffer: 1024 * 1024 * 64 });
+
+  if (!fs.existsSync(wavPath)) throw new Error("Konversi ke WAV gagal");
+  console.log("[transcribe] Konversi WAV selesai:", wavPath);
+  return wavPath;
+}
+
+async function transcribeWithWhisperVTT(options: {
   audioPath: string;
-  durationSeconds: number;
   language?: string;
-}) {
-  const text = await transcribeAudioWithGemini(options.audioPath);
-  return buildTranscript("gemini", text, options.durationSeconds, options.language);
+}): Promise<TranscriptChunk[]> {
+  const { binaryPath, modelPath } = appConfig.ai.whisper;
+  if (!binaryPath || !modelPath) throw new Error("Whisper belum dikonfigurasi");
+
+  // Konversi ke WAV 16kHz mono 16-bit PCM — format satu-satunya yang didukung whisper.cpp
+  const wavPath = await convertToWav(options.audioPath);
+
+  const outputBase = path.join(
+    path.dirname(wavPath),
+    `whisper-${path.basename(wavPath, ".wav")}-${Date.now()}`
+  );
+
+  const args = [
+    "-m", modelPath,
+    "-f", wavPath,
+    "-ovtt",
+    "-of", outputBase,
+    "--max-len", "1",
+    "--split-on-word",
+  ];
+  if (options.language && options.language !== "auto") args.push("-l", options.language);
+
+  console.log("[transcribe] Whisper VTT:", binaryPath);
+  await runCommand(binaryPath, args, { maxBuffer: 1024 * 1024 * 64 });
+
+  // Hapus WAV sementara setelah selesai
+  try { fs.unlinkSync(wavPath); } catch { /* abaikan */ }
+
+  const vttPath = `${outputBase}.vtt`;
+  if (!fs.existsSync(vttPath)) throw new Error("Whisper tidak menghasilkan file .vtt");
+
+  const chunks = parseVTT(fs.readFileSync(vttPath, "utf8"));
+  try { fs.unlinkSync(vttPath); } catch { /* abaikan */ }
+  if (chunks.length === 0) throw new Error("VTT kosong atau tidak bisa di-parse");
+
+  return chunks;
 }
 
 async function tryLocalWhisper(options: {
   audioPath: string;
   durationSeconds: number;
   language?: string;
-}) {
-  const text = await transcribeAudioWithLocalWhisper(options.audioPath, options.language);
-  return buildTranscript("local", text, options.durationSeconds, options.language);
+}): Promise<TranscriptResult> {
+  // Coba VTT dulu untuk timestamp nyata per segmen
+  try {
+    const chunks = await transcribeWithWhisperVTT(options);
+    const text   = chunks.map((c) => c.text).join(" ");
+    console.log(`[transcribe] Whisper VTT OK — ${chunks.length} segmen`);
+    return { text, chunks, source: "local", language: options.language ?? "id", summary: summarize(chunks) };
+  } catch (err) {
+    console.warn("[transcribe] VTT gagal, coba plain text:", err instanceof Error ? err.message : err);
+  }
+
+  // Fallback ke -otxt jika VTT gagal, estimasi timestamp dari panjang video
+  const text   = await transcribeAudioWithLocalWhisper(options.audioPath, options.language);
+  const chunks = splitIntoChunks(text, options.durationSeconds);
+  console.log(`[transcribe] Whisper plain text OK — ${chunks.length} segmen (timestamp estimasi)`);
+  return { text, chunks, source: "local", language: options.language ?? "id", summary: summarize(chunks) };
 }
 
+// ─── Fallback Warning ─────────────────────────────────────────────────────────
+
 function fallbackWarning(errors: string[]): PipelineWarning {
-  const provider = appConfig.ai.provider;
-
-  if (provider === "local" && !isLocalWhisperReady()) {
+  if (!isLocalWhisperReady()) {
     return {
       step: "transcribing",
-      message: "Mode local aktif, tetapi WHISPER_CPP_PATH/WHISPER_MODEL_PATH belum diatur. Menggunakan fallback sementara.",
+      message:
+        "WHISPER_CPP_PATH dan WHISPER_MODEL_PATH belum dikonfigurasi. " +
+        "Set kedua env var tersebut untuk transkripsi nyata.",
     };
   }
-
-  if (provider === "gemini" && !isGeminiReady()) {
-    return {
-      step: "transcribing",
-      message: "Mode Gemini aktif, tetapi GEMINI_API_KEY belum tersedia. Menggunakan fallback sementara.",
-    };
-  }
-
   return {
     step: "transcribing",
     message: errors.length
-      ? `Transkripsi AI gagal (${errors.join(" | ")}). Menggunakan fallback sementara.`
-      : "Tidak ada provider transkripsi AI yang siap. Menggunakan fallback sementara.",
+      ? `Transkripsi Whisper gagal (${errors.join(" | ")}). Menggunakan fallback sementara.`
+      : "Whisper lokal tidak berhasil dijalankan. Menggunakan fallback sementara.",
   };
 }
+
+// ─── Public Entry ─────────────────────────────────────────────────────────────
 
 export async function transcribeAudioWithFallback(options: {
   audioPath: string;
   durationSeconds: number;
   language?: string;
-}) {
-  const provider = appConfig.ai.provider;
+}): Promise<{ transcript: TranscriptResult; warning?: PipelineWarning }> {
   const errors: string[] = [];
 
-  if (provider === "local") {
-    if (isLocalWhisperReady()) {
-      try {
-        return { transcript: await tryLocalWhisper(options) };
-      } catch (error) {
-        errors.push(`Whisper local: ${error instanceof Error ? error.message : String(error)}`);
-      }
-    }
-  } else if (provider === "gemini") {
-    if (isGeminiReady()) {
-      try {
-        return { transcript: await tryGemini(options) };
-      } catch (error) {
-        errors.push(`Gemini: ${error instanceof Error ? error.message : String(error)}`);
-      }
-    }
-  } else if (provider === "auto") {
-    if (isLocalWhisperReady()) {
-      try {
-        return { transcript: await tryLocalWhisper(options) };
-      } catch (error) {
-        errors.push(`Whisper local: ${error instanceof Error ? error.message : String(error)}`);
-      }
-    }
-
-    if (isGeminiReady()) {
-      try {
-        return { transcript: await tryGemini(options) };
-      } catch (error) {
-        errors.push(`Gemini: ${error instanceof Error ? error.message : String(error)}`);
-      }
+  if (isLocalWhisperReady()) {
+    try {
+      return { transcript: await tryLocalWhisper(options) };
+    } catch (error) {
+      errors.push(error instanceof Error ? error.message : String(error));
     }
   }
 
+  // Gemini tidak dipakai untuk transkripsi — langsung fallback
   const chunks = buildFallbackChunks(options.durationSeconds);
   return {
     transcript: {
-      text: chunks.map((chunk) => chunk.text).join(" "),
+      text:     chunks.map((c) => c.text).join(" "),
       chunks,
-      source: "fallback" as const,
+      source:   "fallback",
       language: "id",
-      summary: summarize(chunks),
+      summary:  summarize(chunks),
     },
     warning: fallbackWarning(errors),
   };

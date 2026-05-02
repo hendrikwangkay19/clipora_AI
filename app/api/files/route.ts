@@ -9,10 +9,11 @@
 import fs from "fs";
 import path from "path";
 import { stat } from "fs/promises";
+import { appConfig } from "@/lib/autoclip/config";
 
 export const runtime = "nodejs";
 
-const JOBS_ROOT = path.join(process.cwd(), ".autoclip", "jobs");
+const JOBS_ROOT = appConfig.jobsDir;
 
 function mimeType(filePath: string) {
   const ext = path.extname(filePath).toLowerCase();

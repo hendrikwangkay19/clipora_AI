@@ -1,8 +1,13 @@
 import fs from "fs";
 import path from "path";
+import { execFile } from "child_process";
+import { promisify } from "util";
 import { AppError } from "@/lib/autoclip/errors";
 import { resolveBinary } from "@/lib/autoclip/tools/binaries";
 import { runCommand } from "@/lib/autoclip/tools/command";
+import type { VideoContext } from "@/lib/ai";
+
+const execFileAsync = promisify(execFile);
 
 export function isYoutubeUrl(url: string) {
   try {
@@ -51,4 +56,25 @@ export async function downloadYoutubeVideo(url: string, outputDir: string) {
   }
 
   return found;
+}
+
+export async function fetchYoutubeMetadata(url: string): Promise<VideoContext> {
+  try {
+    const ytDlpPath = await resolveBinary("yt-dlp");
+    const { stdout } = await execFileAsync(ytDlpPath, [
+      "--no-playlist",
+      "--print", "%(title)s",
+      "--print", "%(channel)s",
+      "--print", "%(description)s",
+      url,
+    ]);
+    const [title, channelName, ...descLines] = stdout.trim().split("\n");
+    return {
+      title:       title?.trim() || undefined,
+      channelName: channelName?.trim() || undefined,
+      description: descLines.join("\n").slice(0, 500) || undefined,
+    };
+  } catch {
+    return {};
+  }
 }

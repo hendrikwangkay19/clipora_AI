@@ -5,7 +5,8 @@ import { generateCaptionPayload } from "@/lib/autoclip/captions/generate";
 import { writeSubtitleFile } from "@/lib/autoclip/captions/subtitle";
 import { appConfig } from "@/lib/autoclip/config";
 import { rankSegments } from "@/lib/autoclip/decision/score";
-import { downloadYoutubeVideo, isYoutubeUrl } from "@/lib/autoclip/downloader/youtube";
+import { downloadYoutubeVideo, fetchYoutubeMetadata, isYoutubeUrl } from "@/lib/autoclip/downloader/youtube";
+import type { VideoContext } from "@/lib/ai";
 import { AppError } from "@/lib/autoclip/errors";
 import {
   appendJobWarning,
@@ -45,9 +46,10 @@ export type ProcessOptions = {
   language?:      string;
   hookType?:      HookType;
   cliporaContext?: CliporaProjectContext;
+  videoContext?:  VideoContext;
 };
 
-const ALLOWED_LOCAL_ROOT = path.resolve(process.cwd(), ".autoclip");
+const ALLOWED_LOCAL_ROOT = path.resolve(appConfig.dataDir);
 
 function assertSafeLocalPath(filePath: string) {
   if (filePath.includes("..") || filePath.includes("\0")) {
@@ -91,6 +93,7 @@ async function runPipeline(
     musicTrack     = "none",
     language,
     hookType       = "viral",
+    videoContext,
   } = options;
 
   const musicPath = getMusicPath(musicTrack) ?? undefined;
@@ -127,7 +130,8 @@ async function runPipeline(
   await updateJobStatus(jobId, "analyzing");
   const analysisResult = await analyzeTranscriptWithFallback(
     transcriptionResult.transcript,
-    hookType
+    hookType,
+    videoContext
   );
   if (analysisResult.warning) {
     warnings.push(analysisResult.warning);
@@ -247,8 +251,12 @@ export async function processVideoUrl(url: string, options: ProcessOptions = {})
   try {
     await ensureDir(artifactsDir);
     await updateJobStatus(job.id, "downloading");
-    const sourceVideo = await downloadYoutubeVideo(url, artifactsDir);
-    return await runPipeline(sourceVideo, job.id, url, options);
+    const [sourceVideo, autoCtx] = await Promise.all([
+      downloadYoutubeVideo(url, artifactsDir),
+      fetchYoutubeMetadata(url),
+    ]);
+    const mergedOptions = { ...options, videoContext: { ...autoCtx, ...options.videoContext } };
+    return await runPipeline(sourceVideo, job.id, url, mergedOptions);
   } catch (error) {
     await failJob(job.id, {
       code:    error instanceof AppError ? error.code : "PIPELINE_FAILED",

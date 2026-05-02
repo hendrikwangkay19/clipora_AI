@@ -157,7 +157,7 @@ export async function GET(request: Request): Promise<NextResponse<HealthResponse
   checks.push(checkBinary("ffprobe", appConfig.binaries.ffprobe));
   checks.push(checkBinary("yt-dlp", appConfig.binaries.ytDlp));
 
-  const jobsDir = ".autoclip/jobs";
+  const jobsDir = appConfig.jobsDir;
   try {
     fs.mkdirSync(jobsDir, { recursive: true });
     checks.push({ name: "jobs_storage", status: "ok", message: `Writable: ${jobsDir}` });

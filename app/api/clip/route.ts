@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { NextRequest, NextResponse } from "next/server";
+import { appConfig } from "@/lib/autoclip/config";
 import { clipVideo } from "@/lib/autoclip/media/video";
 import { toErrorResponse } from "@/lib/autoclip/errors";
 import { ensureDir } from "@/lib/autoclip/storage/filesystem";
@@ -11,7 +12,7 @@ export const maxDuration = 180;
 type Segment = { start: number; end: number; text: string };
 
 // ─── Security: hanya izinkan file di dalam .autoclip/ ────────────────────────
-const ALLOWED_ROOT = path.resolve(process.cwd(), ".autoclip");
+const ALLOWED_ROOT = path.resolve(appConfig.dataDir);
 
 function isPathSafe(filePath: string): boolean {
   // Reject path traversal patterns

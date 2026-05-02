@@ -42,34 +42,34 @@ function buildAssHeader(style: SubtitleStyle, aspectRatio: AspectRatio): string 
 
   const defs: Record<SubtitleStyle, StyleDef> = {
     classic: {
-      fontsize: isV ? 26 : 20,
+      fontsize: isV ? 42 : 30,
       bold: -1,
       primaryColour: "&H00FFFFFF",  // putih
       borderStyle: 1,
-      outline: 2,
+      outline: 4,
       backColour: "&H00000000",
-      shadow: 0,
-      marginV: isV ? 44 : 28,
+      shadow: 1,
+      marginV: isV ? 150 : 62,
     },
     bold: {
-      fontsize: isV ? 36 : 28,
+      fontsize: isV ? 64 : 42,
       bold: -1,
       primaryColour: "&H0000FFFF",  // kuning (BGR)
       borderStyle: 1,
-      outline: 3,
+      outline: 6,
       backColour: "&H00000000",
-      shadow: 1,
-      marginV: isV ? 60 : 44,
+      shadow: 2,
+      marginV: isV ? 170 : 76,
     },
     minimal: {
-      fontsize: isV ? 18 : 14,
+      fontsize: isV ? 36 : 24,
       bold: 0,
       primaryColour: "&H00FFFFFF",
       borderStyle: 4,               // opaque box
-      outline: 1,
+      outline: 2,
       backColour: "&H60000000",     // semi-transparan hitam
       shadow: 0,
-      marginV: isV ? 28 : 18,
+      marginV: isV ? 130 : 56,
     },
   };
 
@@ -91,20 +91,21 @@ function buildAssHeader(style: SubtitleStyle, aspectRatio: AspectRatio): string 
   ].join("\n");
 }
 
-// ─── Pemecah chunk panjang → display pendek (maks 6 kata) ────────────────────
+// ─── Pemecah chunk → satu kata per baris (word-by-word) ─────────────────────
+// Whisper sudah memberi timestamp per kata (--max-len 1 --split-on-word).
+// Fungsi ini menjadi fallback untuk chunk lama/fallback yang masih multi-kata.
 
-function splitForDisplay(chunk: TranscriptChunk, maxWords = 6): TranscriptChunk[] {
+function splitIntoWords(chunk: TranscriptChunk): TranscriptChunk[] {
   const words = chunk.text.trim().split(/\s+/).filter(Boolean);
-  if (words.length <= maxWords) return [chunk];
+  if (words.length <= 1) return [chunk];
 
   const dur  = chunk.end - chunk.start;
-  const n    = Math.ceil(words.length / maxWords);
-  const step = dur / n;
+  const step = dur / words.length;
 
-  return Array.from({ length: n }, (_, i) => ({
+  return words.map((word, i) => ({
     start: chunk.start + i * step,
     end:   chunk.start + (i + 1) * step,
-    text:  words.slice(i * maxWords, (i + 1) * maxWords).join(" "),
+    text:  word,
   }));
 }
 
@@ -124,12 +125,15 @@ export function buildAssForClip(
 ): string {
   const displayChunks = chunks
     .filter((c) => c.end > clipStart && c.start < clipEnd)
-    .flatMap((c) => splitForDisplay(c));
+    .flatMap((c) => splitIntoWords(c));
 
   if (displayChunks.length === 0) return "";
 
   const header = buildAssHeader(style, aspectRatio);
   const dialogues: string[] = [];
+
+  // {\\fad(80,0)} — fade-in 80 ms per kata, efek "word pop" ala TikTok/Reels
+  const popTag = "{\\fad(80,0)}";
 
   for (const chunk of displayChunks) {
     const start = Math.max(0, chunk.start - clipStart);
@@ -137,7 +141,7 @@ export function buildAssForClip(
     if (end <= start + 0.05) continue;
 
     dialogues.push(
-      `Dialogue: 0,${toAssTime(start)},${toAssTime(end)},Default,,0,0,0,,${escapeAss(chunk.text.trim())}`
+      `Dialogue: 0,${toAssTime(start)},${toAssTime(end)},Default,,0,0,0,,${popTag}${escapeAss(chunk.text.trim())}`
     );
   }
 

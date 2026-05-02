@@ -1,10 +1,11 @@
 import fs from "fs/promises";
 import path from "path";
+import { appConfig } from "@/lib/autoclip/config";
 import { ensureDir } from "@/lib/autoclip/storage/filesystem";
 
 export const runtime = "nodejs";
 
-const UPLOADS_DIR = path.join(process.cwd(), ".autoclip", "uploads");
+const UPLOADS_DIR = path.join(appConfig.dataDir, "uploads");
 const MAX_SIZE_BYTES = 500 * 1024 * 1024; // 500MB
 const ALLOWED_EXTS = new Set([".mp4", ".mov", ".avi", ".mkv", ".webm", ".m4v"]);
 

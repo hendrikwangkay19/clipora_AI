@@ -28,7 +28,12 @@ export function getMusicPath(track: MusicTrack): string | null {
 function buildVideoFilter(
   aspectRatio: AspectRatio,
   effects: VideoEffects,
-  clipDuration: number
+  clipDuration: number,
+  // Posisi wajah relatif horizontal: 0.0 = kiri, 0.5 = tengah, 1.0 = kanan.
+  // Untuk deteksi wajah otomatis, hitung nilai ini sebelum memanggil clipVideo
+  // (misal dengan FFmpeg facedetect atau analisis frame eksternal), lalu teruskan
+  // sebagai opsi cropX. Default 0.5 aman untuk podcast single-speaker.
+  faceCropX = 0.5
 ): string {
   const parts: string[] = [];
   const w = aspectRatio === "9:16" ? 1080 : 1920;
@@ -36,8 +41,13 @@ function buildVideoFilter(
 
   // 1. Aspect ratio + scale ke resolusi target
   if (aspectRatio === "9:16") {
-    parts.push("crop=trunc(ih*9/16/2)*2:ih:(iw-trunc(ih*9/16/2)*2)/2:0");
-    parts.push(`scale=${w}:${h}`);
+    // Smart crop: scale-to-fill (tidak ada black bar) lalu crop di sekitar wajah.
+    // scale=-2:h → perbesar hingga tinggi = h, lebar proporsional (selalu > w).
+    // crop=w:h:x:0 → potong lebar w dari posisi x yang mengacu faceCropX.
+    // Ekspresi 'max(0,min(iw-w,(iw-w)*faceCropX))' mencegah crop keluar batas.
+    const x = `'max(0,min(iw-${w},(iw-${w})*${faceCropX.toFixed(4)}))'`;
+    parts.push(`scale=-2:${h}`);
+    parts.push(`crop=${w}:${h}:${x}:0`);
   } else {
     parts.push(`scale=${w}:${h}:force_original_aspect_ratio=decrease`);
     parts.push(`pad=${w}:${h}:(ow-iw)/2:(oh-ih)/2:color=black`);
@@ -77,13 +87,15 @@ export async function clipVideo(options: {
   subtitlePath?: string;   // file .ass dengan style sudah embed di dalamnya
   effects?:      VideoEffects;
   musicPath?:    string;
+  cropX?:        number;   // 0.0–1.0, posisi wajah horizontal untuk 9:16 (default 0.5)
 }) {
   const ffmpegPath   = await resolveBinary("ffmpeg");
   const aspectRatio  = options.aspectRatio ?? "16:9";
   const effects      = options.effects     ?? {};
   const musicPath    = options.musicPath   ?? null;
+  const cropX        = Math.max(0, Math.min(1, options.cropX ?? 0.5));
 
-  let vfChain = buildVideoFilter(aspectRatio, effects, options.duration);
+  let vfChain = buildVideoFilter(aspectRatio, effects, options.duration, cropX);
 
   // Subtitle: gunakan filter `ass=` (tanpa force_style) — menghindari masalah
   // quoting koma pada Windows. cwd diset ke folder subtitle agar path aman.
@@ -130,13 +142,14 @@ export async function clipVideo(options: {
   const crf    = process.env.FFMPEG_CRF?.trim()    || "23";
 
   args.push(
-    "-c:v",       "libx264",
-    "-preset",    preset,
-    "-crf",       crf,
-    "-c:a",       "aac",
-    "-b:a",       "128k",
-    "-vf",        vfChain,
-    "-movflags",  "+faststart",
+    "-map_metadata", "-1",          // strip semua metadata dari source (timecode, dll)
+    "-c:v",          "libx264",
+    "-preset",       preset,
+    "-crf",          crf,
+    "-c:a",          "aac",
+    "-b:a",          "128k",
+    "-vf",           vfChain,
+    "-movflags",     "+faststart",
     options.outputPath,
   );
 
