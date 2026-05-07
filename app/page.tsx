@@ -76,14 +76,48 @@ function buildCaptionWithCta(clip: GeneratedClip, cta: string) {
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="mb-2 block text-[12px] font-bold text-[var(--sage-dark)]">{children}</label>;
+  return (
+    <label
+      style={{
+        display: "block",
+        marginBottom: 6,
+        fontSize: 11,
+        fontWeight: 700,
+        color: "var(--accent)",
+        textTransform: "uppercase",
+        letterSpacing: "0.06em",
+      }}
+    >
+      {children}
+    </label>
+  );
 }
 
 function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
-      className="h-11 w-full rounded-[12px] border border-[var(--line)] bg-[rgba(255,250,241,0.76)] px-3 text-[14px] text-[var(--ink)] outline-none transition focus:border-[rgba(85,120,98,0.45)]"
+      style={{
+        height: 40,
+        width: "100%",
+        borderRadius: 8,
+        border: "1px solid var(--border)",
+        background: "var(--surface)",
+        padding: "0 12px",
+        fontSize: 13,
+        color: "var(--text)",
+        outline: "none",
+        transition: "border-color 130ms",
+        ...props.style,
+      }}
+      onFocus={(e) => {
+        e.currentTarget.style.borderColor = "var(--accent)";
+        props.onFocus?.(e);
+      }}
+      onBlur={(e) => {
+        e.currentTarget.style.borderColor = "var(--border)";
+        props.onBlur?.(e);
+      }}
     />
   );
 }
@@ -92,212 +126,39 @@ function SelectInput(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
       {...props}
-      className="h-11 w-full rounded-[12px] border border-[var(--line)] bg-[rgba(255,250,241,0.76)] px-3 text-[14px] text-[var(--ink)] outline-none transition focus:border-[rgba(85,120,98,0.45)]"
+      style={{
+        height: 40,
+        width: "100%",
+        borderRadius: 8,
+        border: "1px solid var(--border)",
+        background: "var(--surface)",
+        padding: "0 12px",
+        fontSize: 13,
+        color: "var(--text)",
+        outline: "none",
+        ...props.style,
+      }}
     />
   );
 }
 
 function MiniMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="soft-card p-3">
-      <p className="text-[12px] font-bold text-[var(--muted)]">{label}</p>
-      <p className="mt-1 text-xl font-bold text-[var(--ink)]">{value}</p>
-    </div>
-  );
-}
-
-function CreatorWorkflowVisual({
-  channels,
-  result,
-}: {
-  channels: TargetChannel[];
-  result: ProcessVideoResult | null;
-}) {
-  const clipCount = result ? result.clips.length : channels.length;
-
-  return (
     <div
       style={{
-        minHeight: 286,
-        border: "1px solid var(--line)",
-        borderRadius: 18,
-        padding: 22,
-        position: "relative",
-        overflow: "hidden",
-        background:
-          "linear-gradient(135deg, rgba(85,120,98,0.15), rgba(255,250,241,0.72) 42%, rgba(198,132,71,0.16))",
+        padding: "10px 12px",
+        borderRadius: 8,
+        background: "var(--surface-alt)",
+        border: "1px solid var(--border)",
       }}
     >
-      <div
-        aria-hidden="true"
-        style={{
-          position: "absolute",
-          inset: 18,
-          border: "1px dashed rgba(85,120,98,0.18)",
-          borderRadius: 18,
-        }}
-      />
-
-      <div
-        style={{
-          position: "relative",
-          zIndex: 2,
-          display: "grid",
-          gridTemplateColumns: "1fr 96px 1fr",
-          alignItems: "center",
-          gap: 18,
-          minHeight: 224,
-        }}
-      >
-        <div style={{ display: "grid", gap: 14 }}>
-          <div className="soft-card" style={{ padding: 14, display: "flex", alignItems: "center", gap: 12 }}>
-            <div
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: "50%",
-                background: "linear-gradient(160deg, #f1c69d, #c68447)",
-                position: "relative",
-                boxShadow: "0 12px 24px rgba(55,67,55,0.12)",
-              }}
-            >
-              <span style={{ position: "absolute", left: 12, top: 10, width: 25, height: 10, borderRadius: 999, background: "var(--sage-dark)" }} />
-              <span style={{ position: "absolute", left: 15, top: 22, width: 4, height: 4, borderRadius: 999, background: "#2b241d" }} />
-              <span style={{ position: "absolute", right: 15, top: 22, width: 4, height: 4, borderRadius: 999, background: "#2b241d" }} />
-              <span style={{ position: "absolute", left: 18, top: 32, width: 13, height: 6, borderBottom: "2px solid #2b241d", borderRadius: "0 0 999px 999px" }} />
-            </div>
-            <div>
-              <p style={{ margin: 0, fontSize: 14, fontWeight: 900 }}>Creator</p>
-              <p style={{ margin: "3px 0 0", fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>raw video</p>
-            </div>
-          </div>
-
-          <div className="soft-card" style={{ padding: 14, display: "flex", alignItems: "center", gap: 12 }}>
-            <div
-              style={{
-                width: 58,
-                height: 40,
-                borderRadius: 10,
-                background: "linear-gradient(135deg, var(--sage-dark), var(--clay))",
-                position: "relative",
-              }}
-            >
-              <span
-                style={{
-                  position: "absolute",
-                  left: 24,
-                  top: 12,
-                  width: 0,
-                  height: 0,
-                  borderTop: "8px solid transparent",
-                  borderBottom: "8px solid transparent",
-                  borderLeft: "12px solid var(--cream)",
-                }}
-              />
-            </div>
-            <div>
-              <p style={{ margin: 0, fontSize: 14, fontWeight: 900 }}>Source</p>
-              <p style={{ margin: "3px 0 0", fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>YouTube / upload</p>
-            </div>
-          </div>
-        </div>
-
-        <div style={{ display: "grid", justifyItems: "center", gap: 10 }}>
-          <div style={{ width: 88, height: 88, borderRadius: "50%", border: "1px dashed rgba(85,120,98,0.42)", position: "relative" }}>
-            <div
-              style={{
-                position: "absolute",
-                inset: 18,
-                borderRadius: "50%",
-                display: "grid",
-                placeItems: "center",
-                color: "var(--cream)",
-                background: "linear-gradient(135deg, var(--sage), var(--sage-dark))",
-                fontSize: 20,
-                fontWeight: 900,
-                boxShadow: "0 14px 28px rgba(53,92,70,0.25)",
-              }}
-            >
-              AI
-            </div>
-            <span style={{ position: "absolute", left: 5, top: 14, width: 12, height: 12, borderRadius: 999, background: "var(--clay)" }} />
-            <span style={{ position: "absolute", right: 0, top: 42, width: 12, height: 12, borderRadius: 999, background: "var(--sage)" }} />
-            <span style={{ position: "absolute", left: 39, bottom: -3, width: 12, height: 12, borderRadius: 999, background: "var(--clay)" }} />
-          </div>
-          <div style={{ display: "grid", gap: 5, width: "100%" }}>
-            {["transcribe", "moments", "captions"].map((item) => (
-              <span key={item} style={{ borderRadius: 999, padding: "5px 8px", background: "rgba(85,120,98,0.1)", color: "var(--sage-dark)", fontSize: 11, fontWeight: 900, textAlign: "center" }}>
-                {item}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <div style={{ display: "grid", gap: 10 }}>
-          {["Reels", "TikTok", "Shorts", "WhatsApp"].map((item, index) => (
-            <div
-              key={item}
-              className="soft-card"
-              style={{
-                minHeight: 42,
-                padding: "0 13px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                transform: `translateX(${-index * 6}px)`,
-                background: "rgba(255,250,241,0.86)",
-              }}
-            >
-              <span style={{ fontSize: 13, fontWeight: 900 }}>{item}</span>
-              <strong style={{ color: "var(--sage-dark)" }}>{clipCount}</strong>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ position: "absolute", left: 188, right: 188, top: "50%", height: 2, background: "linear-gradient(90deg, rgba(85,120,98,0.1), rgba(85,120,98,0.5), rgba(198,132,71,0.38))" }} />
+      <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>
+        {label}
+      </p>
+      <p style={{ margin: "4px 0 0", fontSize: 18, fontWeight: 700, color: "var(--text)" }}>
+        {value}
+      </p>
     </div>
-  );
-}
-
-function Sidebar() {
-  const items = [
-    "Home",
-    "Create Content",
-    "Content Studio",
-    "Campaigns",
-    "Content Library",
-    "Scheduler",
-    "Analytics",
-    "Leads & CTA",
-    "Brand Kit",
-    "Integrations",
-  ];
-
-  return (
-    <aside className="clipora-card sticky top-[86px] hidden h-[calc(100vh-106px)] w-[260px] shrink-0 p-4 lg:block">
-      <div className="mb-5 rounded-[16px] bg-[rgba(85,120,98,0.1)] p-4">
-        <p className="text-[12px] font-bold uppercase text-[var(--sage-dark)]">Workspace</p>
-        <p className="mt-2 text-lg font-bold">Hendrik Studio</p>
-        <p className="mt-1 text-[13px] text-[var(--muted)]">Clipora trial workspace</p>
-      </div>
-      <nav className="space-y-1">
-        {items.map((item, index) => (
-          <a
-            key={item}
-            href={index < 3 ? `#${item.toLowerCase().replaceAll(" ", "-")}` : "#roadmap"}
-            className={`flex items-center justify-between rounded-[12px] px-3 py-3 text-[14px] font-bold transition ${
-              index === 0
-                ? "bg-[var(--sage)] text-[var(--cream)]"
-                : "text-[var(--muted)] hover:bg-[rgba(85,120,98,0.08)] hover:text-[var(--sage-dark)]"
-            }`}
-          >
-            <span>{item}</span>
-            {index > 2 ? <span className="text-[11px] opacity-60">Soon</span> : null}
-          </a>
-        ))}
-      </nav>
-    </aside>
   );
 }
 
@@ -316,37 +177,112 @@ function ClipCard({
   const caption = buildCaptionWithCta(clip, cta);
 
   return (
-    <article className="clipora-card overflow-hidden">
-      <video src={src} controls preload="metadata" className="aspect-video w-full bg-black object-contain" />
-      <div className="p-5">
-        <div className="mb-4 flex items-start justify-between gap-4">
+    <article className="clipora-card" style={{ overflow: "hidden" }}>
+      <video
+        src={src}
+        controls
+        preload="metadata"
+        style={{
+          display: "block",
+          width: "100%",
+          aspectRatio: "16/9",
+          background: "#000",
+          objectFit: "contain",
+        }}
+      />
+      <div style={{ padding: "16px 18px" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            gap: 12,
+            marginBottom: 12,
+          }}
+        >
           <div>
-            <p className="text-[12px] font-bold uppercase text-[var(--muted)]">Clip {index + 1}</p>
-            <h3 className="mt-1 text-lg font-bold leading-snug">{clip.caption.hook}</h3>
+            <p
+              style={{
+                margin: 0,
+                fontSize: 10,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                color: "var(--text-muted)",
+              }}
+            >
+              Clip {index + 1}
+            </p>
+            <h3
+              style={{
+                margin: "4px 0 0",
+                fontSize: 15,
+                fontWeight: 700,
+                lineHeight: 1.4,
+                color: "var(--text)",
+              }}
+            >
+              {clip.caption.hook}
+            </h3>
           </div>
-          <div className="rounded-[12px] bg-[rgba(85,120,98,0.1)] px-3 py-2 text-right">
-            <p className="text-[11px] font-bold text-[var(--muted)]">Score</p>
-            <p className="font-bold text-[var(--sage-dark)]">{scorePct(clip.score.total)}%</p>
+          <div
+            style={{
+              padding: "6px 10px",
+              borderRadius: 8,
+              background: "var(--accent-light)",
+              textAlign: "right",
+              flexShrink: 0,
+            }}
+          >
+            <p style={{ margin: 0, fontSize: 10, fontWeight: 600, color: "var(--text-muted)" }}>
+              Score
+            </p>
+            <p style={{ margin: 0, fontWeight: 700, color: "var(--accent)" }}>
+              {scorePct(clip.score.total)}%
+            </p>
           </div>
         </div>
 
-        <p className="text-[14px] leading-6 text-[var(--muted)]">{clip.caption.caption}</p>
+        <p style={{ fontSize: 13, lineHeight: 1.7, color: "var(--text-sec)" }}>
+          {clip.caption.caption}
+        </p>
+
         {cta ? (
-          <p className="mt-3 rounded-[12px] bg-[rgba(198,132,71,0.11)] p-3 text-[13px] font-bold text-[#7b4b2d]">
+          <p
+            style={{
+              marginTop: 10,
+              padding: 10,
+              borderRadius: 8,
+              background: "var(--gold-light)",
+              fontSize: 12,
+              fontWeight: 700,
+              color: "var(--gold)",
+            }}
+          >
             CTA: {cta}
           </p>
         ) : null}
 
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 6 }}>
           {clip.caption.hashtags.map((tag) => (
-            <span key={tag} className="rounded-full bg-[rgba(85,120,98,0.1)] px-3 py-1 text-[12px] font-bold text-[var(--sage-dark)]">
+            <span
+              key={tag}
+              style={{
+                padding: "3px 10px",
+                borderRadius: 999,
+                background: "var(--accent-light)",
+                fontSize: 11,
+                fontWeight: 700,
+                color: "var(--accent)",
+              }}
+            >
               {tag}
             </span>
           ))}
         </div>
 
-        <div className="mt-5 flex flex-wrap gap-2">
-          <a href={src} download={`clipora-${index + 1}.mp4`} className="primary-button min-h-10">
+        <div style={{ marginTop: 14, display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <a href={src} download={`clipora-${index + 1}.mp4`} className="primary-button">
             Download
           </a>
           <button
@@ -389,10 +325,13 @@ export default function Home() {
   const [n8nInfo, setN8nInfo] = useState<N8nStatus | null>(null);
   const [driveResults, setDriveResults] = useState<N8nDriveResult[]>([]);
   const [n8nConnected, setN8nConnected] = useState<boolean | null>(null);
+  const [processingUrl, setProcessingUrl] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const contentStudioRef = useRef<HTMLElement | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const isProcessingRef = useRef(false);
 
   const context = useMemo<CliporaProjectContext>(() => ({
     projectName,
@@ -431,8 +370,11 @@ export default function Home() {
 
   useEffect(() => {
     fetch("/api/n8n")
-      .then((response) => response.json())
-      .then((data) => setN8nConnected(data?.n8n?.status === "connected"))
+      .then((response) => {
+        if (!response.ok) { setN8nConnected(false); return null; }
+        return response.json() as Promise<{ n8n?: { status?: string } }>;
+      })
+      .then((data) => { if (data !== null) setN8nConnected(data?.n8n?.status === "connected"); })
       .catch(() => setN8nConnected(false));
   }, []);
 
@@ -488,10 +430,11 @@ export default function Home() {
     }
   };
 
-  const callProcess = useCallback(async (body: Record<string, unknown>) => {
+  const callProcess = useCallback(async (body: Record<string, unknown>, signal?: AbortSignal) => {
     const response = await fetch("/api/process-video", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal,
       body: JSON.stringify({
         ...body,
         aspectRatio,
@@ -538,12 +481,20 @@ export default function Home() {
   }, [scrollToStudio]);
 
   const handleFile = useCallback(async (file: File) => {
+    if (isProcessingRef.current) return;
+    isProcessingRef.current = true;
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setState("uploading");
     setUploadPct(0);
     setError(null);
     setResult(null);
     setN8nInfo(null);
     setDriveResults([]);
+    setProcessingUrl(file.name);
 
     try {
       const formData = new FormData();
@@ -551,6 +502,7 @@ export default function Home() {
       const localPath = await new Promise<string>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open("POST", "/api/upload");
+        controller.signal.addEventListener("abort", () => { xhr.abort(); reject(new DOMException("Dibatalkan.", "AbortError")); });
         xhr.upload.onprogress = (event) => {
           if (event.lengthComputable) {
             setUploadPct(Math.round((event.loaded / event.total) * 100));
@@ -574,31 +526,48 @@ export default function Home() {
 
       setState("processing");
       startTimer();
-      const data = await callProcess({ localPath });
+      const data = await callProcess({ localPath }, controller.signal);
       await handleResult(data);
     } catch (err) {
+      if ((err as Error).name === "AbortError") return;
       stopTimer();
       setError(err instanceof Error ? err.message : "Error tidak diketahui.");
       setState("error");
+    } finally {
+      setProcessingUrl(null);
+      isProcessingRef.current = false;
+      if (abortRef.current === controller) abortRef.current = null;
     }
   }, [callProcess, handleResult]);
 
   const handleUrl = useCallback(async () => {
-    if (!url.trim()) return;
+    if (!url.trim() || isProcessingRef.current) return;
+    isProcessingRef.current = true;
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setState("processing");
     setError(null);
     setResult(null);
     setN8nInfo(null);
     setDriveResults([]);
+    setProcessingUrl(url.trim());
     startTimer();
 
     try {
-      const data = await callProcess({ url: url.trim() });
+      const data = await callProcess({ url: url.trim() }, controller.signal);
       await handleResult(data);
     } catch (err) {
+      if ((err as Error).name === "AbortError") return;
       stopTimer();
       setError(err instanceof Error ? err.message : "Error tidak diketahui.");
       setState("error");
+    } finally {
+      setProcessingUrl(null);
+      isProcessingRef.current = false;
+      if (abortRef.current === controller) abortRef.current = null;
     }
   }, [callProcess, handleResult, url]);
 
@@ -611,6 +580,9 @@ export default function Home() {
   };
 
   const reset = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    isProcessingRef.current = false;
     stopTimer();
     setState("idle");
     setResult(null);
@@ -618,135 +590,238 @@ export default function Home() {
     setStep(0);
     setN8nInfo(null);
     setDriveResults([]);
+    setProcessingUrl(null);
   };
 
   const isBusy = state === "uploading" || state === "processing";
 
   return (
-    <div className="mx-auto flex max-w-[1480px] gap-6 px-5 py-6 lg:px-8">
-      <Sidebar />
+    <div style={{ padding: "24px", maxWidth: 1400, margin: "0 auto" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
-      <div className="min-w-0 flex-1 space-y-6">
-        <section id="home" className="clipora-card overflow-hidden">
-          <div className="grid gap-5 p-5 lg:grid-cols-[0.95fr_1.05fr] lg:p-6">
-            <div className="flex flex-col justify-between gap-5">
-              <div>
-                <p className="text-[12px] font-bold uppercase text-[var(--sage-dark)]">Clipora trial workspace</p>
-                <h1 className="mt-2 text-[clamp(1.7rem,3vw,2.6rem)] font-extrabold leading-tight text-[var(--ink)]">
-                  Creator content workflow
-                </h1>
-                <p className="mt-3 max-w-xl text-[14px] leading-6 text-[var(--muted)]">
-                  Masukkan video, pilih objective, lalu review clip siap distribusi.
-                </p>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-5">
-                <MiniMetric label="Clips" value={result ? `${result.clips.length}` : "0"} />
-                <MiniMetric label="Target" value={`${maxClips}`} />
-                <MiniMetric label="Channel" value={`${channels.length}`} />
-                <MiniMetric label="AI" value={result ? (result.summary.analysisSource ?? "fallback") : "Ready"} />
-                <MiniMetric label="Mode" value={n8nConnected ? "n8n" : "Local"} />
-              </div>
+        {/* ── Hero / Stats ──────────────────────────────────── */}
+        <section id="home" className="clipora-card" style={{ overflow: "hidden" }}>
+          <div style={{ padding: "20px 24px 24px" }}>
+            <p
+              style={{
+                margin: 0,
+                fontSize: 10,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+                color: "var(--accent)",
+              }}
+            >
+              Clipora · Clip Studio
+            </p>
+            <h1
+              style={{
+                margin: "6px 0 8px",
+                fontSize: "clamp(1.5rem, 2.5vw, 2.2rem)",
+                fontWeight: 800,
+                lineHeight: 1.25,
+                color: "var(--text)",
+              }}
+            >
+              Creator content workflow
+            </h1>
+            <p style={{ margin: 0, fontSize: 13, color: "var(--text-sec)", lineHeight: 1.6 }}>
+              Masukkan video, pilih objective, lalu review clip siap distribusi.
+            </p>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(5, 1fr)",
+                gap: 10,
+                marginTop: 20,
+              }}
+            >
+              <MiniMetric label="Clips" value={result ? `${result.clips.length}` : "0"} />
+              <MiniMetric label="Target" value={`${maxClips}`} />
+              <MiniMetric label="Channel" value={`${channels.length}`} />
+              <MiniMetric label="AI" value={result ? (result.summary.analysisSource ?? "fallback") : "Ready"} />
+              <MiniMetric label="Mode" value={n8nConnected ? "n8n" : "Local"} />
             </div>
-
-            <CreatorWorkflowVisual channels={channels} result={result} />
           </div>
         </section>
 
-        <section id="create-content" className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr_0.75fr]">
-          <div className="clipora-card p-5">
-            <p className="text-[12px] font-bold uppercase text-[var(--sage-dark)]">Source input</p>
-            <div
-              onDragOver={(event) => {
-                event.preventDefault();
-                setDrag(true);
+        {/* ── Input + Settings + Summary ───────────────────── */}
+        <section
+          id="create-content"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "minmax(240px, 0.9fr) minmax(320px, 1.1fr) minmax(200px, 0.75fr)",
+            gap: 16,
+            alignItems: "start",
+          }}
+        >
+          {/* Source input */}
+          <div className="clipora-card" style={{ padding: 18 }}>
+            <p
+              style={{
+                margin: "0 0 14px",
+                fontSize: 11,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                color: "var(--accent)",
               }}
+            >
+              Source input
+            </p>
+
+            {/* Drop zone */}
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
               onDragLeave={() => setDrag(false)}
-              onDrop={(event) => {
-                event.preventDefault();
+              onDrop={(e) => {
+                e.preventDefault();
                 setDrag(false);
-                const file = event.dataTransfer.files[0];
+                const file = e.dataTransfer.files[0];
                 if (file) void handleFile(file);
               }}
               onClick={() => fileRef.current?.click()}
-              className={`mt-4 flex min-h-[190px] cursor-pointer flex-col items-center justify-center rounded-[16px] border border-dashed p-5 text-center transition ${
-                drag ? "border-[var(--sage)] bg-[rgba(85,120,98,0.12)]" : "border-[var(--line)] bg-[rgba(255,250,241,0.52)]"
-              }`}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                minHeight: 160,
+                borderRadius: 10,
+                border: `1.5px dashed ${drag ? "var(--accent)" : "var(--border-med)"}`,
+                background: drag ? "var(--accent-light)" : "var(--surface-alt)",
+                cursor: "pointer",
+                padding: 16,
+                textAlign: "center",
+                transition: "border-color 130ms, background 130ms",
+              }}
             >
-              <div className="clipora-mark mb-4 scale-110" />
-              <p className="font-bold">{drag ? "Lepaskan video di sini" : "Upload video mentah"}</p>
-              <p className="mt-2 text-[13px] leading-6 text-[var(--muted)]">MP4, MOV, MKV, AVI, WEBM. Maks 500MB.</p>
+              <div className="clipora-mark" style={{ marginBottom: 10 }} />
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
+                {drag ? "Lepaskan video di sini" : "Upload video mentah"}
+              </p>
+              <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
+                MP4, MOV, MKV, AVI, WEBM · maks 500MB
+              </p>
               <input
                 ref={fileRef}
                 type="file"
                 accept="video/mp4,video/quicktime,video/x-msvideo,video/x-matroska,.mp4,.mov,.avi,.mkv,.webm"
-                className="hidden"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
                   if (file) void handleFile(file);
                 }}
               />
             </div>
 
-            <div className="my-4 flex items-center gap-3 text-[12px] font-bold text-[var(--muted)]">
-              <span className="h-px flex-1 bg-[var(--line)]" />
+            {/* Divider */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                margin: "14px 0",
+                fontSize: 11,
+                fontWeight: 700,
+                color: "var(--text-muted)",
+              }}
+            >
+              <span style={{ flex: 1, height: 1, background: "var(--border)" }} />
               ATAU
-              <span className="h-px flex-1 bg-[var(--line)]" />
+              <span style={{ flex: 1, height: 1, background: "var(--border)" }} />
             </div>
 
             <FieldLabel>YouTube URL</FieldLabel>
             <TextInput
               value={url}
-              onChange={(event) => setUrl(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") void handleUrl();
-              }}
+              onChange={(e) => setUrl(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !isBusy) void handleUrl(); }}
               placeholder="https://youtube.com/watch?v=..."
+              disabled={isBusy}
             />
-            <button type="button" className="primary-button mt-4 w-full" disabled={!url.trim() || isBusy} onClick={() => void handleUrl()}>
+            <button
+              type="button"
+              className="primary-button"
+              style={{ width: "100%", marginTop: 12 }}
+              disabled={!url.trim() || isBusy}
+              onClick={() => void handleUrl()}
+            >
               Analyze with AI
             </button>
           </div>
 
-          <div className="clipora-card p-5">
-            <div className="mb-5 flex items-center justify-between gap-4">
+          {/* Project settings */}
+          <div className="clipora-card" style={{ padding: 18 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                marginBottom: 16,
+              }}
+            >
               <div>
-                <p className="text-[12px] font-bold uppercase text-[var(--sage-dark)]">Project information</p>
-                <h2 className="mt-1 text-2xl font-extrabold">Create Content</h2>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    color: "var(--accent)",
+                  }}
+                >
+                  Project information
+                </p>
+                <h2 style={{ margin: "4px 0 0", fontSize: 20, fontWeight: 800, color: "var(--text)" }}>
+                  Create Content
+                </h2>
               </div>
-              {state === "done" ? <button className="ghost-button" onClick={reset}>New project</button> : null}
+              {state === "done" ? (
+                <button className="ghost-button" onClick={reset}>
+                  New project
+                </button>
+              ) : null}
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <div>
                 <FieldLabel>Project name</FieldLabel>
-                <TextInput value={projectName} onChange={(event) => setProjectName(event.target.value)} />
+                <TextInput value={projectName} onChange={(e) => setProjectName(e.target.value)} />
               </div>
               <div>
                 <FieldLabel>Workspace</FieldLabel>
-                <TextInput value={workspaceName} onChange={(event) => setWorkspaceName(event.target.value)} />
+                <TextInput value={workspaceName} onChange={(e) => setWorkspaceName(e.target.value)} />
               </div>
               <div>
                 <FieldLabel>Objective</FieldLabel>
-                <SelectInput value={objective} onChange={(event) => setObjective(event.target.value as Objective)}>
-                  {OBJECTIVES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                <SelectInput value={objective} onChange={(e) => setObjective(e.target.value as Objective)}>
+                  {OBJECTIVES.map((item) => (
+                    <option key={item.value} value={item.value}>{item.label}</option>
+                  ))}
                 </SelectInput>
               </div>
               <div>
                 <FieldLabel>Tone</FieldLabel>
-                <SelectInput value={tone} onChange={(event) => setTone(event.target.value as Tone)}>
-                  {TONES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                <SelectInput value={tone} onChange={(e) => setTone(e.target.value as Tone)}>
+                  {TONES.map((item) => (
+                    <option key={item.value} value={item.value}>{item.label}</option>
+                  ))}
                 </SelectInput>
               </div>
               <div>
                 <FieldLabel>Format</FieldLabel>
-                <SelectInput value={aspectRatio} onChange={(event) => setAspectRatio(event.target.value as AspectRatio)}>
+                <SelectInput value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value as AspectRatio)}>
                   <option value="9:16">Shorts vertical 9:16</option>
                   <option value="16:9">Landscape 16:9</option>
                 </SelectInput>
               </div>
               <div>
                 <FieldLabel>Clip count</FieldLabel>
-                <SelectInput value={maxClips} onChange={(event) => setMaxClips(Number(event.target.value) as 3 | 5 | 10)}>
+                <SelectInput value={maxClips} onChange={(e) => setMaxClips(Number(e.target.value) as 3 | 5 | 10)}>
                   <option value={3}>3 clips</option>
                   <option value={5}>5 clips</option>
                   <option value={10}>10 clips</option>
@@ -754,7 +829,7 @@ export default function Home() {
               </div>
               <div>
                 <FieldLabel>Subtitle style</FieldLabel>
-                <SelectInput value={subtitleStyle} onChange={(event) => setSubtitleStyle(event.target.value as SubtitleStyle)}>
+                <SelectInput value={subtitleStyle} onChange={(e) => setSubtitleStyle(e.target.value as SubtitleStyle)}>
                   <option value="classic">Classic</option>
                   <option value="bold">Bold</option>
                   <option value="minimal">Minimal</option>
@@ -762,7 +837,7 @@ export default function Home() {
               </div>
               <div>
                 <FieldLabel>AI hook strategy</FieldLabel>
-                <SelectInput value={hookType} onChange={(event) => setHookType(event.target.value as HookType)}>
+                <SelectInput value={hookType} onChange={(e) => setHookType(e.target.value as HookType)}>
                   <option value="viral">Viral</option>
                   <option value="pertanyaan">Pertanyaan</option>
                   <option value="cerita">Cerita</option>
@@ -771,7 +846,7 @@ export default function Home() {
               </div>
               <div>
                 <FieldLabel>Subtitle language</FieldLabel>
-                <SelectInput value={language} onChange={(event) => setLanguage(event.target.value as Language)}>
+                <SelectInput value={language} onChange={(e) => setLanguage(e.target.value as Language)}>
                   <option value="auto">Auto detect</option>
                   <option value="id">Indonesia</option>
                   <option value="en">English</option>
@@ -779,19 +854,32 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="mt-4">
+            <div style={{ marginTop: 14 }}>
               <FieldLabel>Target channels</FieldLabel>
-              <div className="flex flex-wrap gap-2">
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {CHANNELS.map((channel) => (
                   <button
                     key={channel.value}
                     type="button"
                     onClick={() => toggleChannel(channel.value)}
-                    className={`rounded-full px-4 py-2 text-[13px] font-bold transition ${
-                      channels.includes(channel.value)
-                        ? "bg-[var(--sage)] text-[var(--cream)]"
-                        : "border border-[var(--line)] bg-[rgba(255,250,241,0.7)] text-[var(--muted)]"
-                    }`}
+                    style={{
+                      padding: "5px 14px",
+                      borderRadius: 999,
+                      border: "1px solid",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      transition: "all 130ms",
+                      borderColor: channels.includes(channel.value)
+                        ? "var(--accent)"
+                        : "var(--border)",
+                      background: channels.includes(channel.value)
+                        ? "var(--accent)"
+                        : "var(--surface)",
+                      color: channels.includes(channel.value)
+                        ? "#fff"
+                        : "var(--text-sec)",
+                    }}
                   >
                     {channel.label}
                   </button>
@@ -799,52 +887,153 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="mt-4">
+            <div style={{ marginTop: 14 }}>
               <FieldLabel>Main CTA</FieldLabel>
-              <TextInput value={cta} onChange={(event) => setCta(event.target.value)} placeholder="Chat WhatsApp untuk order" />
+              <TextInput
+                value={cta}
+                onChange={(e) => setCta(e.target.value)}
+                placeholder="Chat WhatsApp untuk order"
+              />
             </div>
 
             {error ? (
-              <div className="mt-4 rounded-[12px] border border-[rgba(159,63,53,0.24)] bg-[rgba(159,63,53,0.08)] p-3 text-[14px] font-bold text-[var(--danger)]">
+              <div
+                style={{
+                  marginTop: 14,
+                  padding: 12,
+                  borderRadius: 8,
+                  border: "1px solid rgba(208,90,74,0.24)",
+                  background: "var(--error-bg)",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "var(--error)",
+                }}
+              >
                 {error}
               </div>
             ) : null}
           </div>
 
-          <div className="clipora-card p-5">
-            <p className="text-[12px] font-bold uppercase text-[var(--sage-dark)]">Output summary</p>
-            <div className="mt-4 space-y-2">
-              <div className="soft-card p-4">
-                <p className="text-[13px] font-bold">{selectedObjective.label}</p>
-                <p className="mt-1 text-[12px] leading-5 text-[var(--muted)]">{selectedObjective.detail}</p>
+          {/* Output summary + progress */}
+          <div className="clipora-card" style={{ padding: 18 }}>
+            <p
+              style={{
+                margin: "0 0 14px",
+                fontSize: 11,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                color: "var(--accent)",
+              }}
+            >
+              Output summary
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div className="soft-card" style={{ padding: 12 }}>
+                <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "var(--text)" }}>
+                  {selectedObjective.label}
+                </p>
+                <p style={{ margin: "4px 0 0", fontSize: 11, lineHeight: 1.6, color: "var(--text-sec)" }}>
+                  {selectedObjective.detail}
+                </p>
               </div>
-              <div className="soft-card p-4">
-                <p className="text-[13px] font-bold">Channels</p>
-                <p className="mt-1 text-[12px] leading-5 text-[var(--muted)]">
+              <div className="soft-card" style={{ padding: 12 }}>
+                <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "var(--text)" }}>
+                  Channels
+                </p>
+                <p style={{ margin: "4px 0 0", fontSize: 11, lineHeight: 1.6, color: "var(--text-sec)" }}>
                   {channels.map(formatChannel).join(", ") || "Belum dipilih"}
                 </p>
               </div>
-              <div className="soft-card p-4">
-                <p className="text-[13px] font-bold">Brand preset</p>
-                <p className="mt-1 text-[12px] leading-5 text-[var(--muted)]">Warm Sage, {subtitleStyle}, {tone}.</p>
+              <div className="soft-card" style={{ padding: 12 }}>
+                <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "var(--text)" }}>
+                  Brand preset
+                </p>
+                <p style={{ margin: "4px 0 0", fontSize: 11, lineHeight: 1.6, color: "var(--text-sec)" }}>
+                  Warm Sage · {subtitleStyle} · {tone}
+                </p>
               </div>
             </div>
 
             {state === "uploading" ? (
-              <div className="mt-5">
-                <p className="mb-2 text-[13px] font-bold">Uploading {uploadPct}%</p>
-                <div className="h-2 overflow-hidden rounded-full bg-[rgba(85,120,98,0.12)]">
-                  <div className="h-full rounded-full bg-[var(--sage)]" style={{ width: `${uploadPct}%` }} />
+              <div style={{ marginTop: 16 }}>
+                <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "var(--text)" }}>
+                  Uploading {uploadPct}%
+                </p>
+                <div
+                  style={{
+                    height: 6,
+                    borderRadius: 999,
+                    background: "var(--accent-light)",
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      height: "100%",
+                      borderRadius: 999,
+                      background: "var(--accent)",
+                      width: `${uploadPct}%`,
+                      transition: "width 200ms",
+                    }}
+                  />
                 </div>
               </div>
             ) : null}
 
             {state === "processing" ? (
-              <div className="mt-5 space-y-2">
+              <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 6 }}>
+                {processingUrl ? (
+                  <div
+                    style={{
+                      padding: 10,
+                      borderRadius: 8,
+                      border: "1px solid var(--accent-light)",
+                      background: "var(--accent-light)",
+                    }}
+                  >
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: 10,
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.08em",
+                        color: "var(--accent)",
+                      }}
+                    >
+                      Sedang memproses
+                    </p>
+                    <p
+                      style={{
+                        margin: "3px 0 0",
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: "var(--text)",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                      title={processingUrl}
+                    >
+                      {processingUrl}
+                    </p>
+                  </div>
+                ) : null}
                 {STEPS.map((item, index) => (
-                  <div key={item} className={`rounded-[12px] p-3 text-[13px] font-bold ${
-                    index <= step ? "bg-[rgba(85,120,98,0.12)] text-[var(--sage-dark)]" : "bg-[rgba(255,250,241,0.55)] text-[var(--muted)]"
-                  }`}>
+                  <div
+                    key={item}
+                    style={{
+                      padding: "8px 10px",
+                      borderRadius: 8,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      background: index <= step ? "var(--accent-light)" : "var(--surface-alt)",
+                      color: index <= step ? "var(--accent)" : "var(--text-muted)",
+                      border: `1px solid ${index <= step ? "rgba(74,122,101,0.2)" : "var(--border)"}`,
+                    }}
+                  >
                     {index + 1}. {item}
                   </div>
                 ))}
@@ -853,30 +1042,93 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="content-studio" ref={contentStudioRef} className="clipora-card p-5 lg:p-6">
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
+        {/* ── Content Studio / Results ─────────────────────── */}
+        <section
+          id="content-studio"
+          ref={contentStudioRef}
+          className="clipora-card"
+          style={{ padding: "18px 24px 24px" }}
+        >
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              marginBottom: 18,
+            }}
+          >
             <div>
-              <p className="text-[12px] font-bold uppercase text-[var(--sage-dark)]">Content Studio MVP</p>
-              <h2 className="mt-1 text-2xl font-extrabold">Review outputs</h2>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.1em",
+                  color: "var(--accent)",
+                }}
+              >
+                Content Studio MVP
+              </p>
+              <h2 style={{ margin: "4px 0 0", fontSize: 20, fontWeight: 800, color: "var(--text)" }}>
+                Review outputs
+              </h2>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
               {n8nInfo ? (
-                <span className="rounded-full bg-[rgba(85,120,98,0.1)] px-4 py-2 text-[12px] font-bold text-[var(--sage-dark)]">
+                <span
+                  style={{
+                    padding: "5px 12px",
+                    borderRadius: 999,
+                    background: "var(--accent-light)",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "var(--accent)",
+                  }}
+                >
                   {n8nInfo.notified ? "n8n post-processing active" : "Local output only"}
                 </span>
               ) : null}
-              <button type="button" className="ghost-button" onClick={() => void loadLatestResult()}>
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={() => void loadLatestResult()}
+              >
                 Refresh latest
               </button>
             </div>
           </div>
 
           {result?.warnings.length ? (
-            <div className="mb-5 rounded-[14px] border border-[rgba(198,132,71,0.26)] bg-[rgba(198,132,71,0.08)] p-4">
-              <p className="text-[12px] font-bold uppercase text-[var(--clay)]">AI fallback notice</p>
-              <div className="mt-2 space-y-1">
+            <div
+              style={{
+                marginBottom: 18,
+                padding: 14,
+                borderRadius: 8,
+                border: "1px solid rgba(196,154,60,0.26)",
+                background: "var(--warn-bg)",
+              }}
+            >
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                  color: "var(--gold)",
+                }}
+              >
+                AI fallback notice
+              </p>
+              <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
                 {result.warnings.map((warning) => (
-                  <p key={`${warning.step}-${warning.message}`} className="text-[13px] font-bold text-[var(--ink)]">
+                  <p
+                    key={`${warning.step}-${warning.message}`}
+                    style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "var(--text)" }}
+                  >
                     {warning.step}: {warning.message}
                   </p>
                 ))}
@@ -885,23 +1137,81 @@ export default function Home() {
           ) : null}
 
           {!result ? (
-            <div className="soft-card p-8 text-center">
-              <p className="text-lg font-bold">Belum ada project diproses.</p>
-                <p className="mt-2 text-[14px] text-[var(--muted)]">Upload video atau paste URL untuk melihat hasil clip di sini.</p>
+            <div
+              className="soft-card"
+              style={{ padding: 32, textAlign: "center" }}
+            >
+              <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "var(--text)" }}>
+                Belum ada project diproses.
+              </p>
+              <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--text-sec)" }}>
+                Upload video atau paste URL untuk melihat hasil clip di sini.
+              </p>
             </div>
           ) : (
-            <div className="grid gap-5 xl:grid-cols-[0.8fr_1.2fr_0.8fr]">
-              <div className="soft-card max-h-[760px] overflow-auto p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-[12px] font-bold uppercase text-[var(--muted)]">Transcript</p>
-                  <span className="rounded-full bg-[rgba(85,120,98,0.1)] px-3 py-1 text-[11px] font-bold uppercase text-[var(--sage-dark)]">
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "0.8fr 1.2fr 0.8fr",
+                gap: 16,
+                alignItems: "start",
+              }}
+            >
+              {/* Transcript */}
+              <div
+                className="soft-card"
+                style={{ padding: 14, maxHeight: 720, overflowY: "auto" }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 8,
+                    marginBottom: 12,
+                  }}
+                >
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: 10,
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    Transcript
+                  </p>
+                  <span
+                    style={{
+                      padding: "3px 8px",
+                      borderRadius: 999,
+                      background: "var(--accent-light)",
+                      fontSize: 10,
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      color: "var(--accent)",
+                    }}
+                  >
                     {result.summary.transcriptSource}
                   </span>
                 </div>
-                <p className="mt-3 text-[14px] leading-7 text-[var(--ink)]">{result.transcript.text}</p>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 13,
+                    lineHeight: 1.75,
+                    color: "var(--text)",
+                  }}
+                >
+                  {result.transcript.text}
+                </p>
               </div>
 
-              <div className="space-y-4">
+              {/* Clips */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 {result.clips.map((clip, index) => (
                   <ClipCard
                     key={clip.id}
@@ -913,21 +1223,74 @@ export default function Home() {
                 ))}
               </div>
 
-              <div className="soft-card p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-[12px] font-bold uppercase text-[var(--muted)]">Clip planning</p>
-                  <span className="rounded-full bg-[rgba(198,132,71,0.12)] px-3 py-1 text-[11px] font-bold uppercase text-[var(--clay)]">
+              {/* Clip planning */}
+              <div className="soft-card" style={{ padding: 14 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 8,
+                    marginBottom: 12,
+                  }}
+                >
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: 10,
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    Clip planning
+                  </p>
+                  <span
+                    style={{
+                      padding: "3px 8px",
+                      borderRadius: 999,
+                      background: "var(--gold-light)",
+                      fontSize: 10,
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      color: "var(--gold)",
+                    }}
+                  >
                     {result.summary.analysisSource ?? "fallback"}
                   </span>
                 </div>
-                <div className="mt-4 space-y-3">
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {result.segments.map((segment) => (
-                    <div key={`${segment.rank}-${segment.start}`} className="rounded-[12px] border border-[var(--line)] bg-[rgba(255,255,255,0.38)] p-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-[13px] font-bold">Rank {segment.rank}</p>
-                        <span className="text-[12px] font-bold text-[var(--sage-dark)]">{scorePct(segment.score.total)}%</span>
+                    <div
+                      key={`${segment.rank}-${segment.start}`}
+                      style={{
+                        padding: 10,
+                        borderRadius: 8,
+                        border: "1px solid var(--border)",
+                        background: "var(--surface)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 8,
+                          marginBottom: 6,
+                        }}
+                      >
+                        <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "var(--text)" }}>
+                          Rank {segment.rank}
+                        </p>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)" }}>
+                          {scorePct(segment.score.total)}%
+                        </span>
                       </div>
-                      <p className="mt-2 text-[13px] leading-6 text-[var(--muted)]">{segment.reason}</p>
+                      <p style={{ margin: 0, fontSize: 12, lineHeight: 1.6, color: "var(--text-sec)" }}>
+                        {segment.reason}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -936,20 +1299,28 @@ export default function Home() {
           )}
         </section>
 
-        <section id="roadmap" className="grid gap-4 md:grid-cols-4">
+        {/* ── Roadmap ──────────────────────────────────────── */}
+        <section id="roadmap" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
           {[
             ["Phase 1", "Core operasional", "Rebrand, Create Content, metadata Clipora, Content Studio MVP."],
             ["Phase 2", "Business layer", "Campaigns, CTA presets, brand kit dasar, content library."],
             ["Phase 3", "Distribution", "Scheduler, export packaging, Drive/WhatsApp workflow."],
             ["Phase 4", "Feedback", "Analytics snapshots, recommendations, team approval."],
           ].map(([phase, title, detail]) => (
-            <div key={phase} className="soft-card p-4">
-              <p className="text-[12px] font-bold text-[var(--sage-dark)]">{phase}</p>
-              <p className="mt-2 font-extrabold">{title}</p>
-              <p className="mt-2 text-[13px] leading-6 text-[var(--muted)]">{detail}</p>
+            <div key={phase} className="soft-card" style={{ padding: 14 }}>
+              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "var(--accent)" }}>
+                {phase}
+              </p>
+              <p style={{ margin: "6px 0 4px", fontSize: 13, fontWeight: 800, color: "var(--text)" }}>
+                {title}
+              </p>
+              <p style={{ margin: 0, fontSize: 12, lineHeight: 1.6, color: "var(--text-sec)" }}>
+                {detail}
+              </p>
             </div>
           ))}
         </section>
+
       </div>
     </div>
   );

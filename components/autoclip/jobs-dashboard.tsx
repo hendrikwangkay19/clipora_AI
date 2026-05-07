@@ -10,36 +10,14 @@ type JobsResponse = {
   total: number;
 };
 
-// ─── Status badge ─────────────────────────────────────────────────────────────
-
 const STATUS_STYLES: Record<
   GenerationJobStatus,
-  { label: string; bg: string; color: string; dot: string }
+  { label: string; bg: string; color: string }
 > = {
-  pending: {
-    label: "Pending",
-    bg: "rgba(255,255,255,0.06)",
-    color: "rgba(255,255,255,0.4)",
-    dot: "rgba(255,255,255,0.2)",
-  },
-  processing: {
-    label: "Processing",
-    bg: "rgba(251,191,36,0.1)",
-    color: "#FBBf24",
-    dot: "#FBBf24",
-  },
-  completed: {
-    label: "Selesai",
-    bg: "rgba(0,255,148,0.08)",
-    color: "#00FF94",
-    dot: "#00FF94",
-  },
-  failed: {
-    label: "Gagal",
-    bg: "rgba(239,68,68,0.08)",
-    color: "#EF4444",
-    dot: "#EF4444",
-  },
+  pending: { label: "Pending", bg: "var(--surface-alt)", color: "var(--text-muted)" },
+  processing: { label: "Processing", bg: "var(--warn-bg)", color: "var(--warn)" },
+  completed: { label: "Selesai", bg: "var(--accent-light)", color: "var(--accent)" },
+  failed: { label: "Gagal", bg: "var(--error-bg)", color: "var(--error)" },
 };
 
 const PIPELINE_STEP_LABELS: Record<string, string> = {
@@ -58,30 +36,27 @@ function StatusBadge({ status }: { status: GenerationJobStatus }) {
       style={{
         display: "inline-flex",
         alignItems: "center",
-        gap: "5px",
+        gap: 5,
         padding: "3px 10px",
-        borderRadius: "999px",
-        fontSize: "11px",
-        fontWeight: 600,
+        borderRadius: 999,
+        fontSize: 11,
+        fontWeight: 700,
         background: s.bg,
         color: s.color,
       }}
     >
       <span
         style={{
-          width: 6,
-          height: 6,
+          width: 5,
+          height: 5,
           borderRadius: "50%",
-          background: s.dot,
-          animation: status === "processing" ? "pulse 1.2s infinite" : undefined,
+          background: s.color,
         }}
       />
       {s.label}
     </span>
   );
 }
-
-// ─── Single Job Card ──────────────────────────────────────────────────────────
 
 function JobCard({ job }: { job: GenerationJob }) {
   const elapsed = job.completedAt
@@ -93,23 +68,22 @@ function JobCard({ job }: { job: GenerationJob }) {
   return (
     <div
       style={{
-        background: "rgba(255,255,255,0.03)",
-        border: `1px solid ${job.status === "completed" ? "rgba(0,255,148,0.15)" : job.status === "failed" ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.07)"}`,
-        borderRadius: "14px",
-        padding: "18px 20px",
+        background: "var(--surface)",
+        border: "1px solid var(--border)",
+        borderRadius: 12,
+        padding: "16px 18px",
         display: "flex",
         flexDirection: "column",
-        gap: "10px",
+        gap: 10,
       }}
     >
-      {/* Header row */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <p
             style={{
-              fontSize: "14px",
-              fontWeight: 600,
-              color: "#fff",
+              fontSize: 14,
+              fontWeight: 700,
+              color: "var(--text)",
               margin: 0,
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -118,46 +92,50 @@ function JobCard({ job }: { job: GenerationJob }) {
           >
             {job.script?.title ?? job.topic}
           </p>
-          <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)", margin: "3px 0 0", fontFamily: "monospace" }}>
+          <p
+            style={{
+              fontSize: 11,
+              color: "var(--text-muted)",
+              margin: "3px 0 0",
+              fontFamily: "var(--font-mono, monospace)",
+            }}
+          >
             {job.id.slice(0, 8)}… · {job.style} · {job.language.toUpperCase()} · {job.durationSeconds}s
           </p>
         </div>
         <StatusBadge status={job.status} />
       </div>
 
-      {/* Processing step */}
       {job.status === "processing" && job.pipelineStatus && (
         <div
           style={{
-            fontSize: "12px",
-            color: "#FBBf24",
-            background: "rgba(251,191,36,0.06)",
-            borderRadius: "6px",
+            fontSize: 12,
+            color: "var(--warn)",
+            background: "var(--warn-bg)",
+            borderRadius: 6,
             padding: "6px 10px",
           }}
         >
-          ⚙ {PIPELINE_STEP_LABELS[job.pipelineStatus] ?? job.pipelineStatus}
+          {PIPELINE_STEP_LABELS[job.pipelineStatus] ?? job.pipelineStatus}
         </div>
       )}
 
-      {/* Error */}
       {job.status === "failed" && job.error && (
         <div
           style={{
-            fontSize: "12px",
-            color: "#EF4444",
-            background: "rgba(239,68,68,0.06)",
-            borderRadius: "6px",
+            fontSize: 12,
+            color: "var(--error)",
+            background: "var(--error-bg)",
+            borderRadius: 6,
             padding: "6px 10px",
           }}
         >
-          ✕ {job.error}
+          {job.error}
         </div>
       )}
 
-      {/* Footer row */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px" }}>
-        <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.25)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
           {new Date(job.createdAt).toLocaleString("id-ID", {
             day: "2-digit",
             month: "short",
@@ -173,24 +151,22 @@ function JobCard({ job }: { job: GenerationJob }) {
             download
             style={{
               padding: "5px 14px",
-              background: "#00FF94",
-              color: "#0a0a0f",
-              borderRadius: "999px",
-              fontSize: "12px",
+              background: "var(--accent)",
+              color: "#fff",
+              borderRadius: 999,
+              fontSize: 12,
               fontWeight: 700,
               textDecoration: "none",
               flexShrink: 0,
             }}
           >
-            ⬇ Download
+            Download
           </a>
         )}
       </div>
     </div>
   );
 }
-
-// ─── Batch Create Panel ───────────────────────────────────────────────────────
 
 function BatchPanel({ onBatchCreated }: { onBatchCreated: () => void }) {
   const [topics, setTopics] = useState("");
@@ -218,31 +194,42 @@ function BatchPanel({ onBatchCreated }: { onBatchCreated: () => void }) {
       });
       const data = await res.json();
       if (data.success) {
-        setResult(`✅ ${data.total} job dibuat dan masuk antrian`);
+        setResult(`${data.total} job dibuat dan masuk antrian`);
         setTopics("");
         onBatchCreated();
       } else {
-        setResult(`✕ ${data.error?.message}`);
+        setResult(`Error: ${data.error?.message}`);
       }
     } catch {
-      setResult("✕ Request gagal");
+      setResult("Request gagal");
     } finally {
       setLoading(false);
     }
   };
 
+  const topicCount = topics.split("\n").filter((t) => t.trim()).length;
+
   return (
     <div
       style={{
-        background: "rgba(255,255,255,0.03)",
-        border: "1px solid rgba(255,255,255,0.07)",
-        borderRadius: "16px",
-        padding: "20px",
-        marginBottom: "28px",
+        background: "var(--surface)",
+        border: "1px solid var(--border)",
+        borderRadius: 12,
+        padding: 18,
+        marginBottom: 24,
       }}
     >
-      <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "14px" }}>
-        Batch Generate — 1 topik per baris (max 20)
+      <p
+        style={{
+          margin: "0 0 12px",
+          fontSize: 10,
+          fontWeight: 700,
+          textTransform: "uppercase",
+          letterSpacing: "0.1em",
+          color: "var(--accent)",
+        }}
+      >
+        Batch Generate — 1 topik per baris (maks 20)
       </p>
 
       <textarea
@@ -250,34 +237,34 @@ function BatchPanel({ onBatchCreated }: { onBatchCreated: () => void }) {
         onChange={(e) => setTopics(e.target.value)}
         placeholder={"5 fakta unik otak manusia\nSejarah singkat internet\nCara belajar lebih cepat"}
         disabled={loading}
-        rows={5}
+        rows={4}
         style={{
           width: "100%",
-          background: "rgba(255,255,255,0.04)",
-          border: "1px solid rgba(255,255,255,0.1)",
-          borderRadius: "10px",
-          padding: "12px",
-          color: "#fff",
-          fontSize: "13px",
-          fontFamily: "monospace",
+          background: "var(--surface-alt)",
+          border: "1px solid var(--border)",
+          borderRadius: 8,
+          padding: "10px 12px",
+          color: "var(--text)",
+          fontSize: 13,
+          fontFamily: "var(--font-mono, monospace)",
           resize: "vertical",
           outline: "none",
           boxSizing: "border-box",
         }}
       />
 
-      <div style={{ display: "flex", gap: "8px", marginTop: "10px", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap", alignItems: "center" }}>
         <select
           value={style}
           onChange={(e) => setStyle(e.target.value)}
           disabled={loading}
           style={{
-            background: "rgba(255,255,255,0.05)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: "8px",
+            background: "var(--surface-alt)",
+            border: "1px solid var(--border)",
+            borderRadius: 8,
             padding: "6px 10px",
-            color: "#fff",
-            fontSize: "12px",
+            color: "var(--text)",
+            fontSize: 12,
           }}
         >
           <option value="informative">Informatif</option>
@@ -291,16 +278,16 @@ function BatchPanel({ onBatchCreated }: { onBatchCreated: () => void }) {
           onChange={(e) => setLanguage(e.target.value)}
           disabled={loading}
           style={{
-            background: "rgba(255,255,255,0.05)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: "8px",
+            background: "var(--surface-alt)",
+            border: "1px solid var(--border)",
+            borderRadius: 8,
             padding: "6px 10px",
-            color: "#fff",
-            fontSize: "12px",
+            color: "var(--text)",
+            fontSize: 12,
           }}
         >
-          <option value="id">🇮🇩 Indonesia</option>
-          <option value="en">🇺🇸 English</option>
+          <option value="id">Indonesia</option>
+          <option value="en">English</option>
         </select>
 
         <button
@@ -308,27 +295,27 @@ function BatchPanel({ onBatchCreated }: { onBatchCreated: () => void }) {
           disabled={loading || !topics.trim()}
           style={{
             marginLeft: "auto",
-            padding: "6px 20px",
-            background: loading || !topics.trim() ? "rgba(0,255,148,0.2)" : "#00FF94",
-            color: loading || !topics.trim() ? "rgba(0,255,148,0.4)" : "#0a0a0f",
+            padding: "6px 18px",
+            background: loading || !topics.trim() ? "var(--accent-light)" : "var(--accent)",
+            color: loading || !topics.trim() ? "var(--accent)" : "#fff",
             border: "none",
-            borderRadius: "8px",
-            fontSize: "12px",
+            borderRadius: 8,
+            fontSize: 12,
             fontWeight: 700,
             cursor: loading || !topics.trim() ? "not-allowed" : "pointer",
-            fontFamily: "monospace",
           }}
         >
-          {loading ? "Membuat..." : `⚡ Buat ${topics.split("\n").filter((t) => t.trim()).length || 0} Video`}
+          {loading ? "Membuat..." : `Buat ${topicCount || 0} Video`}
         </button>
       </div>
 
       {result && (
         <p
           style={{
-            marginTop: "10px",
-            fontSize: "13px",
-            color: result.startsWith("✅") ? "#00FF94" : "#EF4444",
+            marginTop: 8,
+            fontSize: 12,
+            fontWeight: 600,
+            color: result.startsWith("Error") || result.startsWith("Request") ? "var(--error)" : "var(--accent)",
           }}
         >
           {result}
@@ -337,8 +324,6 @@ function BatchPanel({ onBatchCreated }: { onBatchCreated: () => void }) {
     </div>
   );
 }
-
-// ─── Main Dashboard ───────────────────────────────────────────────────────────
 
 export function JobsDashboard() {
   const [data, setData] = useState<JobsResponse | null>(null);
@@ -360,13 +345,11 @@ export function JobsDashboard() {
 
   useEffect(() => {
     void fetchJobs();
-    // Poll every 3 seconds while there are active jobs
     pollRef.current = setInterval(async () => {
       const res = await fetch("/api/generation-jobs");
       const json = (await res.json()) as JobsResponse;
       setData(json);
 
-      // Stop polling if nothing is pending/processing
       const hasActive = json.jobs.some(
         (j) => j.status === "pending" || j.status === "processing"
       );
@@ -381,7 +364,6 @@ export function JobsDashboard() {
     };
   }, [fetchJobs]);
 
-  // Re-start polling when new jobs are created
   const handleBatchCreated = () => {
     void fetchJobs();
     if (!pollRef.current) {
@@ -405,32 +387,45 @@ export function JobsDashboard() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#0a0a0f",
-        color: "#fff",
-        fontFamily: "monospace",
-        padding: "28px 20px",
-        maxWidth: "800px",
-        margin: "0 auto",
-      }}
-    >
+    <div style={{ padding: 24, maxWidth: 860, margin: "0 auto" }}>
       {/* Header */}
-      <div style={{ marginBottom: "28px" }}>
-        <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.25)", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "6px" }}>
+      <div style={{ marginBottom: 24 }}>
+        <p
+          style={{
+            margin: 0,
+            fontSize: 10,
+            fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: "0.1em",
+            color: "var(--accent)",
+          }}
+        >
           Generation Jobs
         </p>
-        <h1 style={{ fontSize: "22px", fontWeight: 800, margin: 0, fontFamily: "Georgia, serif" }}>
-          Job <span style={{ color: "#00FF94" }}>Dashboard</span>
+        <h1
+          style={{
+            margin: "6px 0 0",
+            fontSize: 22,
+            fontWeight: 800,
+            color: "var(--text)",
+          }}
+        >
+          Job Dashboard
         </h1>
 
         {data?.queue && (
-          <div style={{ display: "flex", gap: "16px", marginTop: "10px" }}>
-            <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.3)" }}>
+          <div style={{ display: "flex", gap: 14, marginTop: 8, alignItems: "center" }}>
+            <span style={{ fontSize: 12, color: "var(--text-sec)" }}>
               Queue:{" "}
-              <span style={{ color: data.queue.isProcessing ? "#FBBf24" : "rgba(255,255,255,0.5)" }}>
-                {data.queue.isProcessing ? `Processing (${data.queue.queueLength} waiting)` : "Idle"}
+              <span
+                style={{
+                  fontWeight: 700,
+                  color: data.queue.isProcessing ? "var(--warn)" : "var(--text-muted)",
+                }}
+              >
+                {data.queue.isProcessing
+                  ? `Processing (${data.queue.queueLength} waiting)`
+                  : "Idle"}
               </span>
             </span>
             <button
@@ -438,38 +433,36 @@ export function JobsDashboard() {
               style={{
                 background: "none",
                 border: "none",
-                color: "rgba(255,255,255,0.3)",
+                color: "var(--accent)",
                 cursor: "pointer",
-                fontSize: "12px",
-                fontFamily: "monospace",
+                fontSize: 12,
+                fontWeight: 700,
                 padding: 0,
               }}
             >
-              ↻ Refresh
+              Refresh
             </button>
           </div>
         )}
       </div>
 
-      {/* Batch panel */}
       <BatchPanel onBatchCreated={handleBatchCreated} />
 
       {/* Filter tabs */}
-      <div style={{ display: "flex", gap: "6px", marginBottom: "18px", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
         {(["all", "pending", "processing", "completed", "failed"] as const).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
             style={{
               padding: "5px 12px",
-              borderRadius: "999px",
-              border: `1px solid ${filter === f ? "rgba(0,255,148,0.4)" : "rgba(255,255,255,0.08)"}`,
-              background: filter === f ? "rgba(0,255,148,0.08)" : "transparent",
-              color: filter === f ? "#00FF94" : "rgba(255,255,255,0.35)",
-              fontSize: "11px",
-              fontWeight: filter === f ? 700 : 400,
+              borderRadius: 999,
+              border: `1px solid ${filter === f ? "var(--accent)" : "var(--border)"}`,
+              background: filter === f ? "var(--accent-light)" : "transparent",
+              color: filter === f ? "var(--accent)" : "var(--text-sec)",
+              fontSize: 11,
+              fontWeight: filter === f ? 700 : 500,
               cursor: "pointer",
-              fontFamily: "monospace",
             }}
           >
             {f === "all" ? "Semua" : f.charAt(0).toUpperCase() + f.slice(1)}{" "}
@@ -478,36 +471,30 @@ export function JobsDashboard() {
         ))}
       </div>
 
-      {/* Job list */}
       {loading ? (
-        <p style={{ color: "rgba(255,255,255,0.2)", fontSize: "14px" }}>Memuat jobs...</p>
+        <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Memuat jobs...</p>
       ) : filteredJobs.length === 0 ? (
         <div
           style={{
             textAlign: "center",
-            padding: "60px 20px",
-            border: "1px dashed rgba(255,255,255,0.06)",
-            borderRadius: "16px",
+            padding: "48px 20px",
+            border: "1.5px dashed var(--border-med)",
+            borderRadius: 12,
           }}
         >
-          <p style={{ color: "rgba(255,255,255,0.2)", fontSize: "14px" }}>
-            {filter === "all" ? "Belum ada job. Buat video pertama kamu!" : `Tidak ada job dengan status "${filter}"`}
+          <p style={{ color: "var(--text-muted)", fontSize: 14, margin: 0 }}>
+            {filter === "all"
+              ? "Belum ada job. Buat video pertama kamu!"
+              : `Tidak ada job dengan status "${filter}"`}
           </p>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {filteredJobs.map((job) => (
             <JobCard key={job.id} job={job} />
           ))}
         </div>
       )}
-
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.3; }
-        }
-      `}</style>
     </div>
   );
 }

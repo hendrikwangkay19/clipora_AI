@@ -1,6 +1,22 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
+import { Sidebar } from "@/components/clipora/sidebar";
+import { TopBar } from "@/components/clipora/top-bar";
 import "./globals.css";
+
+const sans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+});
+
+const mono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  weight: ["400", "500", "700"],
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Clipora - Content Repurposing Engine",
@@ -9,49 +25,25 @@ export const metadata: Metadata = {
   icons: { icon: "/favicon.ico" },
 };
 
-const NAV_ITEMS = [
-  { href: "/", label: "Home" },
-  { href: "/dashboard", label: "Jobs" },
-  { href: "/generate", label: "AI Video" },
-];
-
-function CliporaMark() {
-  return (
-    <span className="clipora-mark" aria-hidden="true">
-      <span className="clipora-mark-play" />
-    </span>
-  );
-}
-
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <html lang="id" suppressHydrationWarning>
-      <body>
-        <header className="top-shell">
-          <Link href="/" className="brand-link" aria-label="Clipora home">
-            <CliporaMark />
-            <span className="brand-word">Clipora</span>
-          </Link>
-
-          <nav className="top-nav" aria-label="Primary navigation">
-            {NAV_ITEMS.map((item) => (
-              <Link key={item.href} href={item.href} className="nav-link">
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-
-          <div className="top-status">
-            <span className="status-dot" />
-            <span>MVP Local</span>
+    <html
+      lang="id"
+      suppressHydrationWarning
+      className={`${sans.variable} ${mono.variable}`}
+    >
+      <body style={{ fontFamily: "var(--font-sans, 'Plus Jakarta Sans', system-ui, sans-serif)" }}>
+        <div className="app-shell">
+          <Sidebar />
+          <div className="main-area">
+            <TopBar />
+            <main className="page-content">{children}</main>
           </div>
-        </header>
-
-        <main>{children}</main>
+        </div>
       </body>
     </html>
   );

@@ -33,6 +33,24 @@ const PIPELINE_STEPS = [
   "assembling_video",
 ];
 
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <label
+      style={{
+        display: "block",
+        marginBottom: 6,
+        fontSize: 11,
+        fontWeight: 700,
+        textTransform: "uppercase" as const,
+        letterSpacing: "0.06em",
+        color: "var(--accent)",
+      }}
+    >
+      {children}
+    </label>
+  );
+}
+
 export function GenerateUi() {
   const router = useRouter();
 
@@ -45,12 +63,10 @@ export function GenerateUi() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // After job creation — we track the job via polling
   const [trackedJobId, setTrackedJobId] = useState<string | null>(null);
   const [trackedJob, setTrackedJob] = useState<GenerationJob | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Poll job status after creation
   useEffect(() => {
     if (!trackedJobId) return;
 
@@ -123,207 +139,268 @@ export function GenerateUi() {
     ? PIPELINE_STEPS.indexOf(trackedJob.pipelineStatus)
     : -1;
 
+  const selectStyle = {
+    width: "100%",
+    background: "var(--surface-alt)",
+    border: "1px solid var(--border)",
+    borderRadius: 8,
+    padding: "8px 12px",
+    color: "var(--text)",
+    fontSize: 13,
+    outline: "none",
+  };
+
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#0a0a0f",
-        color: "#fff",
-        fontFamily: "monospace",
-        padding: "28px 20px",
-        maxWidth: "720px",
-        margin: "0 auto",
-      }}
-    >
+    <div style={{ padding: 24, maxWidth: 720, margin: "0 auto" }}>
       {/* Header */}
-      <div style={{ marginBottom: "28px" }}>
-        <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.25)", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "6px" }}>
+      <div style={{ marginBottom: 28 }}>
+        <p
+          style={{
+            margin: 0,
+            fontSize: 10,
+            fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: "0.1em",
+            color: "var(--accent)",
+          }}
+        >
           AI Video Generator
         </p>
-        <h1 style={{ fontSize: "22px", fontWeight: 800, margin: 0, fontFamily: "Georgia, serif" }}>
-          Topik <span style={{ color: "#00FF94" }}>→ Video Pendek</span>
+        <h1 style={{ margin: "6px 0 0", fontSize: 22, fontWeight: 800, color: "var(--text)" }}>
+          Topik → Video Pendek
         </h1>
-        <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "13px", marginTop: "6px" }}>
+        <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--text-sec)" }}>
           Ketik topik → AI buat script → suara → video → download
         </p>
       </div>
 
       {/* Form — hide when tracking a job */}
       {!trackedJobId && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginBottom: "20px" }}>
-          <div>
-            <label style={{ fontSize: "11px", color: "rgba(255,255,255,0.35)", textTransform: "uppercase", letterSpacing: "0.1em", display: "block", marginBottom: "8px" }}>
-              Topik Video
-            </label>
-            <input
-              type="text"
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !submitting && handleGenerate()}
-              placeholder="Contoh: 5 fakta unik tentang otak manusia"
-              disabled={submitting}
-              style={{
-                width: "100%",
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.1)",
-                borderRadius: "12px",
-                padding: "12px 16px",
-                color: "#fff",
-                fontSize: "14px",
-                fontFamily: "monospace",
-                outline: "none",
-                boxSizing: "border-box",
-              }}
-            />
-          </div>
+        <div className="clipora-card" style={{ padding: 20, marginBottom: 20 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div>
+              <FieldLabel>Topik Video</FieldLabel>
+              <input
+                type="text"
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && !submitting && void handleGenerate()}
+                placeholder="Contoh: 5 fakta unik tentang otak manusia"
+                disabled={submitting}
+                style={{
+                  width: "100%",
+                  background: "var(--surface-alt)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  padding: "10px 14px",
+                  color: "var(--text)",
+                  fontSize: 14,
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-            {[
-              {
-                label: "Gaya",
-                value: style,
-                onChange: setStyle,
-                options: [
-                  { value: "informative", label: "Informatif" },
-                  { value: "motivational", label: "Motivasi" },
-                  { value: "educational", label: "Edukasi" },
-                  { value: "story", label: "Cerita" },
-                ],
-              },
-              {
-                label: "Bahasa",
-                value: language,
-                onChange: setLanguage,
-                options: [
-                  { value: "id", label: "Indonesia 🇮🇩" },
-                  { value: "en", label: "English 🇺🇸" },
-                ],
-              },
-              {
-                label: "Durasi",
-                value: String(duration),
-                onChange: (v: string) => setDuration(Number(v)),
-                options: [
-                  { value: "30", label: "~30 detik" },
-                  { value: "60", label: "~60 detik" },
-                ],
-              },
-              {
-                label: "Suara",
-                value: voice,
-                onChange: setVoice,
-                options: VOICE_OPTIONS.map((v) => ({ value: v.value, label: v.label })),
-              },
-            ].map(({ label, value, onChange, options }) => (
-              <div key={label}>
-                <label style={{ fontSize: "11px", color: "rgba(255,255,255,0.35)", textTransform: "uppercase", letterSpacing: "0.1em", display: "block", marginBottom: "6px" }}>
-                  {label}
-                </label>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div>
+                <FieldLabel>Gaya</FieldLabel>
                 <select
-                  value={value}
-                  onChange={(e) => onChange(e.target.value)}
+                  value={style}
+                  onChange={(e) => setStyle(e.target.value)}
                   disabled={submitting}
-                  style={{
-                    width: "100%",
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    borderRadius: "10px",
-                    padding: "9px 12px",
-                    color: "#fff",
-                    fontSize: "13px",
-                    fontFamily: "monospace",
-                    outline: "none",
-                  }}
+                  style={selectStyle}
                 >
-                  {options.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
+                  <option value="informative">Informatif</option>
+                  <option value="motivational">Motivasi</option>
+                  <option value="educational">Edukasi</option>
+                  <option value="story">Cerita</option>
+                </select>
+              </div>
+              <div>
+                <FieldLabel>Bahasa</FieldLabel>
+                <select
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  disabled={submitting}
+                  style={selectStyle}
+                >
+                  <option value="id">Indonesia</option>
+                  <option value="en">English</option>
+                </select>
+              </div>
+              <div>
+                <FieldLabel>Durasi</FieldLabel>
+                <select
+                  value={String(duration)}
+                  onChange={(e) => setDuration(Number(e.target.value))}
+                  disabled={submitting}
+                  style={selectStyle}
+                >
+                  <option value="30">~30 detik</option>
+                  <option value="60">~60 detik</option>
+                </select>
+              </div>
+              <div>
+                <FieldLabel>Suara</FieldLabel>
+                <select
+                  value={voice}
+                  onChange={(e) => setVoice(e.target.value)}
+                  disabled={submitting}
+                  style={selectStyle}
+                >
+                  {VOICE_OPTIONS.map((v) => (
+                    <option key={v.value} value={v.value}>
+                      {v.label}
                     </option>
                   ))}
                 </select>
               </div>
-            ))}
-          </div>
-
-          <button
-            onClick={handleGenerate}
-            disabled={submitting || !topic.trim()}
-            style={{
-              width: "100%",
-              padding: "13px",
-              borderRadius: "12px",
-              border: "none",
-              fontWeight: 700,
-              fontSize: "14px",
-              fontFamily: "monospace",
-              letterSpacing: "0.05em",
-              cursor: submitting || !topic.trim() ? "not-allowed" : "pointer",
-              background: submitting || !topic.trim() ? "rgba(0,255,148,0.15)" : "#00FF94",
-              color: submitting || !topic.trim() ? "rgba(0,255,148,0.35)" : "#0a0a0f",
-              transition: "all 0.15s",
-            }}
-          >
-            {submitting ? "Membuat job..." : "⚡ Generate Video"}
-          </button>
-
-          {error && (
-            <div style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "10px", padding: "12px 14px" }}>
-              <p style={{ fontSize: "13px", color: "#EF4444", margin: 0 }}>{error}</p>
             </div>
-          )}
+
+            <button
+              onClick={() => void handleGenerate()}
+              disabled={submitting || !topic.trim()}
+              className="primary-button"
+              style={{ width: "100%", minHeight: 44, fontSize: 14 }}
+            >
+              {submitting ? "Membuat job..." : "Generate Video"}
+            </button>
+
+            {error && (
+              <div
+                style={{
+                  padding: "10px 14px",
+                  background: "var(--error-bg)",
+                  border: "1px solid rgba(208,90,74,0.2)",
+                  borderRadius: 8,
+                }}
+              >
+                <p style={{ margin: 0, fontSize: 13, color: "var(--error)" }}>{error}</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Job tracking panel */}
+      {/* Job tracking */}
       {trackedJobId && trackedJob && (
-        <div style={{ border: `1px solid ${trackedJob.status === "completed" ? "rgba(0,255,148,0.25)" : trackedJob.status === "failed" ? "rgba(239,68,68,0.2)" : "rgba(255,255,255,0.08)"}`, borderRadius: "16px", padding: "22px", marginBottom: "20px" }}>
+        <div
+          className="clipora-card"
+          style={{
+            padding: 20,
+            marginBottom: 20,
+            borderColor:
+              trackedJob.status === "completed"
+                ? "rgba(74,122,101,0.3)"
+                : trackedJob.status === "failed"
+                  ? "rgba(208,90,74,0.3)"
+                  : "var(--border)",
+          }}
+        >
           {/* Status header */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 16,
+            }}
+          >
             <div>
-              <p style={{ fontSize: "13px", fontWeight: 600, color: "#fff", margin: 0 }}>
+              <p
+                style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", margin: 0 }}
+              >
                 {trackedJob.script?.title ?? trackedJob.topic}
               </p>
-              <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)", margin: "3px 0 0" }}>
+              <p
+                style={{
+                  fontSize: 11,
+                  color: "var(--text-muted)",
+                  margin: "3px 0 0",
+                  fontFamily: "var(--font-mono, monospace)",
+                }}
+              >
                 Job {trackedJob.id.slice(0, 8)}…
               </p>
             </div>
-            <span style={{
-              padding: "4px 12px",
-              borderRadius: "999px",
-              fontSize: "11px",
-              fontWeight: 700,
-              background: trackedJob.status === "completed" ? "rgba(0,255,148,0.1)" : trackedJob.status === "failed" ? "rgba(239,68,68,0.1)" : "rgba(251,191,36,0.1)",
-              color: trackedJob.status === "completed" ? "#00FF94" : trackedJob.status === "failed" ? "#EF4444" : "#FBBf24",
-            }}>
+            <span
+              style={{
+                padding: "4px 12px",
+                borderRadius: 999,
+                fontSize: 11,
+                fontWeight: 700,
+                background:
+                  trackedJob.status === "completed"
+                    ? "var(--accent-light)"
+                    : trackedJob.status === "failed"
+                      ? "var(--error-bg)"
+                      : "var(--warn-bg)",
+                color:
+                  trackedJob.status === "completed"
+                    ? "var(--accent)"
+                    : trackedJob.status === "failed"
+                      ? "var(--error)"
+                      : "var(--warn)",
+              }}
+            >
               {trackedJob.status}
             </span>
           </div>
 
           {/* Pipeline progress */}
           {isRunning && (
-            <div style={{ marginBottom: "16px" }}>
+            <div style={{ marginBottom: 16 }}>
               {PIPELINE_STEPS.map((step, i) => {
                 const isDone = i < activeStepIndex;
                 const isActive = i === activeStepIndex;
                 return (
-                  <div key={step} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "6px 0" }}>
-                    <div style={{
-                      width: 18, height: 18, borderRadius: "50%",
-                      background: isDone ? "#00FF94" : isActive ? "rgba(0,255,148,0.15)" : "rgba(255,255,255,0.04)",
-                      border: isActive ? "1.5px solid #00FF94" : "none",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: "10px", color: isDone ? "#0a0a0f" : "#00FF94",
-                      flexShrink: 0,
-                    }}>
+                  <div
+                    key={step}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "5px 0",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 18,
+                        height: 18,
+                        borderRadius: "50%",
+                        background: isDone
+                          ? "var(--accent)"
+                          : isActive
+                            ? "var(--accent-light)"
+                            : "var(--surface-alt)",
+                        border: isActive ? "1.5px solid var(--accent)" : "1px solid var(--border)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 10,
+                        color: isDone ? "#fff" : "var(--accent)",
+                        flexShrink: 0,
+                      }}
+                    >
                       {isDone ? "✓" : isActive ? "·" : ""}
                     </div>
-                    <span style={{ fontSize: "13px", color: isDone ? "rgba(255,255,255,0.6)" : isActive ? "#fff" : "rgba(255,255,255,0.2)" }}>
+                    <span
+                      style={{
+                        fontSize: 13,
+                        color: isDone
+                          ? "var(--text-sec)"
+                          : isActive
+                            ? "var(--text)"
+                            : "var(--text-muted)",
+                        fontWeight: isActive ? 700 : 400,
+                      }}
+                    >
                       {PIPELINE_STEP_LABELS[step]}
                     </span>
                   </div>
                 );
               })}
-              <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.2)", marginTop: "10px" }}>
+              <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 8 }}>
                 Proses 30–90 detik. Jangan tutup tab.
               </p>
             </div>
@@ -331,38 +408,62 @@ export function GenerateUi() {
 
           {/* Completed */}
           {trackedJob.status === "completed" && trackedJob.videoUrl && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              <video src={trackedJob.videoUrl} controls style={{ width: "100%", borderRadius: "10px", background: "#000", maxHeight: "320px" }} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <video
+                src={trackedJob.videoUrl}
+                controls
+                style={{
+                  width: "100%",
+                  borderRadius: 10,
+                  background: "#000",
+                  maxHeight: 320,
+                }}
+              />
               <a
                 href={trackedJob.videoUrl}
                 download
-                style={{ display: "block", textAlign: "center", padding: "11px", background: "#00FF94", color: "#0a0a0f", borderRadius: "10px", fontWeight: 700, fontSize: "13px", textDecoration: "none" }}
+                className="primary-button"
+                style={{ textAlign: "center", minHeight: 42, fontSize: 13 }}
               >
-                ⬇ Download MP4
+                Download MP4
               </a>
             </div>
           )}
 
           {/* Failed */}
           {trackedJob.status === "failed" && (
-            <div style={{ background: "rgba(239,68,68,0.06)", borderRadius: "8px", padding: "10px 12px" }}>
-              <p style={{ fontSize: "13px", color: "#EF4444", margin: 0 }}>{trackedJob.error}</p>
+            <div
+              style={{
+                padding: "8px 12px",
+                background: "var(--error-bg)",
+                borderRadius: 8,
+              }}
+            >
+              <p style={{ fontSize: 13, color: "var(--error)", margin: 0 }}>
+                {trackedJob.error}
+              </p>
             </div>
           )}
 
           {/* Actions */}
-          <div style={{ display: "flex", gap: "10px", marginTop: "16px" }}>
+          <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
             <button
-              onClick={() => { setTrackedJobId(null); setTrackedJob(null); setTopic(""); }}
-              style={{ flex: 1, padding: "9px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "10px", color: "rgba(255,255,255,0.6)", fontSize: "13px", cursor: "pointer", fontFamily: "monospace" }}
+              onClick={() => {
+                setTrackedJobId(null);
+                setTrackedJob(null);
+                setTopic("");
+              }}
+              className="ghost-button"
+              style={{ flex: 1 }}
             >
               + Video Baru
             </button>
             <button
               onClick={() => router.push("/dashboard")}
-              style={{ flex: 1, padding: "9px", background: "rgba(0,255,148,0.06)", border: "1px solid rgba(0,255,148,0.15)", borderRadius: "10px", color: "#00FF94", fontSize: "13px", cursor: "pointer", fontFamily: "monospace" }}
+              className="ghost-button"
+              style={{ flex: 1, borderColor: "var(--accent)", color: "var(--accent)" }}
             >
-              📋 Lihat Dashboard
+              Lihat Dashboard
             </button>
           </div>
         </div>
